@@ -38,3 +38,11 @@ function generic_matmatmul!(C::AbstractMatrix{Float32}, ta, tb,
     generic_matmatmul!(C, ta, tb,
         MatMulView(A), MatMulView(B))
 end
+
+# For now do gemv! in Float32 precision - we'll have to evaluate if this makes
+# sense on the real hardware (which would have to do this on the vector units)
+function LinearAlgebra.BLAS.gemv!(trans::AbstractChar, alpha::Float32,
+                                  A::AbstractVecOrMat{Float32}, X::AbstractVector{Float32},
+                                  beta::Float32, Y::LowPrecArray)
+    LinearAlgebra.BLAS.gemv!(trans, alpha, A, X, beta, Y.storage)
+end
