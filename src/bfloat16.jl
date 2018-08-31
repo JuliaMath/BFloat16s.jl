@@ -65,11 +65,11 @@ function Base.:(==)(x::BFloat16, y::BFloat16)
     ix = reinterpret(UInt16, x)
     iy = reinterpret(UInt16, y)
     # NaNs (isnan(x) || isnan(y))
-    if (ix|iy)&0x7fff > 0x7f80
+    if (ix|iy)&~sign_mask(BFloat16) > exponent_mask(BFloat16)
         return false
     end
     # Signed zeros
-    if (ix|iy)&0x7fff == 0x0000
+    if (ix|iy)&~sign_mask(BFloat16) == 0
         return true
     end
     return ix == iy
