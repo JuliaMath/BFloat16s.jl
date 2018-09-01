@@ -1,3 +1,5 @@
+import LinearAlgebra
+
 """
 LowPrecArray
 
