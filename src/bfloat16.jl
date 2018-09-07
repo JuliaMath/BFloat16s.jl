@@ -278,7 +278,7 @@ rsqrt(x::BFloat16) = BFloat16(inv(sqrt(Float32(x))))
 rcbrt(x::BFloat16) = BFloat16(inv(cbrt(Float32(x))))
 
 sqrt(x::BFloat16) = BFloat16(sqrt(Float32(x)))
-cbrt(x::BFloat16) = BFloat16(sqrt(Float32(x)))
+cbrt(x::BFloat16) = BFloat16(cbrt(Float32(x)))
 
 floor(x::BFloat16) = BFloat16(floor(Float32(x)))
 ceil(x::BFloat16) = BFloat16(ceil(Float32(x)))
