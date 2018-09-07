@@ -161,8 +161,6 @@ somenans(ix::UInt16, iy::UInt16) = (ix|iy) & ~sign_mask(BFloat16) > exponent_mas
 # iszero(UInt16(x::BFloat16)) && iszero(UInt16(y::BFloat16))
 twozeros(ix::UInt16, iy::UInt16) = (ix|iy)&~sign_mask(BFloat16) === zero(UInt16)
 
-
-
 for (F,N,Z,C) in (
                   (:(==), :false, :true,  :(===)),
                   (:(!=), :true,  :false, :(!==)),
