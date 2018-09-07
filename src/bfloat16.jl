@@ -19,10 +19,10 @@ import Base: sign_mask, exponent_mask, significand_mask,
     pow, (^)
     # frexp, ldexp, exponent, significand
 
-using Base:IEEEFloat
 
 export square, cube, rsquare, rcube, rsqrt, rcbrt
 
+using Base: IEEEFloat
 
 primitive type BFloat16 <: AbstractFloat 16 end
 
@@ -229,7 +229,6 @@ Base.widemul(a::BFloat16, b::BFloat16) = Float32(a) * Float32(b)
 
 # string
 function Base.string(x::BFloat16)
-    hastypeinfo = BFloat16 === get(io, :typeinfo, Any)
     if isinf(x)
         signbit(x) ? "-InfB16" : "InfB16"
     elseif isnan(x)
@@ -241,6 +240,7 @@ end
 
 # Showing
 function Base.show(io::IO, x::BFloat16)
+    hastypeinfo = BFloat16 === get(io, :typeinfo, Any)
     if isinf(x)
         print(io, signbit(x) ? "-InfB16" : "InfB16")
     elseif isnan(x)
