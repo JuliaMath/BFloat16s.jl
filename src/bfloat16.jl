@@ -155,67 +155,31 @@ end
 
 # Floating point comparison
 
-# isnan(x) || isnan(y)
+# isnan(UInt16(x::BFloat16)) || isnan(UInt16(y::BFloat16))
 somenans(ix::UInt16, iy::UInt16) = (ix|iy) & ~sign_mask(BFloat16) > exponent_mask(BFloat16)
 
-# Signed zeros
+# iszero(UInt16(x::BFloat16)) && iszero(UInt16(y::BFloat16))
 twozeros(ix::UInt16, iy::UInt16) = (ix|iy)&~sign_mask(BFloat16) === zero(UInt16)
 
-
-function (==)(x::BFloat16, y::BFloat16)
-    ix, iy = UInt16(x), UInt16(y)
-    # NaNs (isnan(x) || isnan(y))
-    somenans(ix, iy) && return false
-    # Signed zeros
-    twozeros(ix, iy) && return true
-    return ix === iy
+for (F,N,Z,C) in (
+                  (:(==), :false, :true,  :(===)),
+                  (:(!=), :true,  :false, :(!==)),
+                  (:(<) , :false, :false, :(<)  ),
+                  (:(<=), :false, :true,  :(<=) ),
+                  (:(>=), :false, :true,  :(>=) ),
+                  (:(>) , :false, :false, :(>)  )
+    )
+  @eval begin
+    function ($F)(x::BFloat16, y::BFloat16)
+        ix, iy = UInt16(x), UInt16(y)
+        somenans(ix, iy) && return $N  # either isnan
+        # Signed zeros
+        twozeros(ix, iy) && return $Z  # both zeros (+0.0 and/or -0.0)
+        return ($C)(ix, iy)
+    end
+  end
 end
 
-function (!=)(x::BFloat16, y::BFloat16)
-    ix, iy = UInt16(x), UInt16(y)
-    # NaNs (isnan(x) || isnan(y))
-    somenans(ix, iy) && return true
-    # Signed zeros
-    twozeros(ix, iy) && return false
-    return ix !== iy
-end
-
-function (<)(x::BFloat16, y::BFloat16)
-    ix, iy = UInt16(x), UInt16(y)
-    # NaNs (isnan(x) || isnan(y))
-    somenans(ix, iy) && return false
-    # Signed zeros
-    twozeros(ix, iy) && return false
-    return ix < iy
-end
-
-
-function (<=)(x::BFloat16, y::BFloat16)
-    ix, iy = UInt16(x), UInt16(y)
-    # NaNs (isnan(x) || isnan(y))
-    somenans(ix, iy) && return false
-    # Signed zeros
-    twozeros(ix, iy) && return true
-    return ix <= iy
-end
-
-function (>)(x::BFloat16, y::BFloat16)
-    ix, iy = UInt16(x), UInt16(y)
-    # NaNs (isnan(x) || isnan(y))
-    somenans(ix, iy) && return false
-    # Signed zeros
-    twozeros(ix, iy) && return false
-    return ix > iy
-end
-
-function (>=)(x::BFloat16, y::BFloat16)
-    ix, iy = UInt16(x), UInt16(y)
-    # NaNs (isnan(x) || isnan(y))
-    somenans(ix, iy) && return false
-    # Signed zeros
-    twozeros(ix, iy) && return true
-    return ix >= iy
-end
 
 
 Base.widen(::Type{BFloat16}) = Float32
@@ -226,6 +190,7 @@ Base.promote_rule(::Type{BFloat16}, ::Type{Int64}) = BFloat16
 
 # Wide multiplication
 Base.widemul(a::BFloat16, b::BFloat16) = Float32(a) * Float32(b)
+
 
 # string
 function Base.string(x::BFloat16)
@@ -251,6 +216,8 @@ function Base.show(io::IO, x::BFloat16)
         hastypeinfo || print(io, ")")
     end
 end
+
+# math functions
 
 abs(x::BFloat16) = BFloat16(abs(Float32(x)))
 
