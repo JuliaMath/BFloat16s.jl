@@ -286,6 +286,7 @@ ceil(x::BFloat16) = BFloat16(ceil(Float32(x)))
 exp(x::BFloat16) = BFloat16(exp(Float32(x)))
 expm1(x::BFloat16) = BFloat16(expm1(Float32(x)))
 log(x::BFloat16) = BFloat16(log(Float32(x)))
+log1p(x::BFloat16) = BFloat16(log1p(Float32(x)))
 log10(x::BFloat16) = BFloat16(log10(Float32(x)))
 log2(x::BFloat16) = BFloat16(log2(Float32(x)))
 
