@@ -277,46 +277,16 @@ end
 rsqrt(x::BFloat16) = BFloat16(inv(sqrt(Float32(x))))
 rcbrt(x::BFloat16) = BFloat16(inv(cbrt(Float32(x))))
 
-sqrt(x::BFloat16) = BFloat16(sqrt(Float32(x)))
-cbrt(x::BFloat16) = BFloat16(cbrt(Float32(x)))
-
-floor(x::BFloat16) = BFloat16(floor(Float32(x)))
-ceil(x::BFloat16) = BFloat16(ceil(Float32(x)))
-
-exp(x::BFloat16) = BFloat16(exp(Float32(x)))
-expm1(x::BFloat16) = BFloat16(expm1(Float32(x)))
-log(x::BFloat16) = BFloat16(log(Float32(x)))
-log1p(x::BFloat16) = BFloat16(log1p(Float32(x)))
-log10(x::BFloat16) = BFloat16(log10(Float32(x)))
-log2(x::BFloat16) = BFloat16(log2(Float32(x)))
-
-sin(x::BFloat16) = BFloat16(sin(Float32(x)))
-cos(x::BFloat16) = BFloat16(cos(Float32(x)))
-tan(x::BFloat16) = BFloat16(tan(Float32(x)))
-csc(x::BFloat16) = BFloat16(csc(Float32(x)))
-sec(x::BFloat16) = BFloat16(sec(Float32(x)))
-cot(x::BFloat16) = BFloat16(cot(Float32(x)))
-
-asin(x::BFloat16) = BFloat16(asin(Float32(x)))
-acos(x::BFloat16) = BFloat16(acos(Float32(x)))
-atan(x::BFloat16) = BFloat16(atan(Float32(x)))
-acsc(x::BFloat16) = BFloat16(acsc(Float32(x)))
-asec(x::BFloat16) = BFloat16(asec(Float32(x)))
-acot(x::BFloat16) = BFloat16(acot(Float32(x)))
-
-sinh(x::BFloat16) = BFloat16(sinh(Float32(x)))
-cosh(x::BFloat16) = BFloat16(cosh(Float32(x)))
-tanh(x::BFloat16) = BFloat16(tanh(Float32(x)))
-csch(x::BFloat16) = BFloat16(csch(Float32(x)))
-sech(x::BFloat16) = BFloat16(sech(Float32(x)))
-coth(x::BFloat16) = BFloat16(coth(Float32(x)))
-
-asinh(x::BFloat16) = BFloat16(asinh(Float32(x)))
-acosh(x::BFloat16) = BFloat16(acosh(Float32(x)))
-atanh(x::BFloat16) = BFloat16(atanh(Float32(x)))
-acsch(x::BFloat16) = BFloat16(acsch(Float32(x)))
-asech(x::BFloat16) = BFloat16(asech(Float32(x)))
-acoth(x::BFloat16) = BFloat16(acoth(Float32(x)))
+for F in (:sqrt, :cbrt, :floor, :ceil,
+          :exp, :expm1, :log, :log1p, :log2, :log10,
+          :sin, :cos, :tan, :csc, :sec, :cot,
+          :asin, :acos, :atan, :acsc, :asec, :acot,
+          :sinh, :cosh, :tanh, :csch, :sech, :coth,
+          :asinh, :acosh, :atanh, :acsch, :asech, :acoth)
+  @eval begin
+    $F(x::BFloat16) = BFloat16($F(Float32(x)))
+  end
+end
 
 for (A,B) in ((:BFloat16, :BFloat16),
               (:BFloat16, :Integer), (:Integer, :BFloat16),
