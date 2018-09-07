@@ -156,7 +156,7 @@ end
 # Floating point comparison
 
 # isnan(x) || isnan(y)
-somenans(ix::UInt16, iy::UInt16) = (ix|iy) & ~sign_mask(BFloat16) <= exponent_mask(BFloat16)
+somenans(ix::UInt16, iy::UInt16) = (ix|iy) & ~sign_mask(BFloat16) > exponent_mask(BFloat16)
 
 # Signed zeros
 twozeros(ix::UInt16, iy::UInt16) = (ix|iy)&~sign_mask(BFloat16) === zero(UInt16)
