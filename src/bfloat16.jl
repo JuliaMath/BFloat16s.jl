@@ -165,7 +165,7 @@ twozeros(x::UInt16, y::UInt16) = (ix|iy)&~sign_mask(BFloat16) === zero(UInt16)
 function (==)(x::BFloat16, y::BFloat16)
     ix, iy = UInt16(x), UInt16(y)
     # NaNs (isnan(x) || isnan(y))
-    somenans(x, y) && return false
+    somenans(ix, iy) && return false
     # Signed zeros
     twozeros(ix, iy) && return true
     return ix === iy
@@ -174,7 +174,7 @@ end
 function (!=)(x::BFloat16, y::BFloat16)
     ix, iy = UInt16(x), UInt16(y)
     # NaNs (isnan(x) || isnan(y))
-    somenans(x, y) && return true
+    somenans(ix, iy) && return true
     # Signed zeros
     twozeros(ix, iy) && return false
     return ix !== iy
@@ -183,7 +183,7 @@ end
 function (<)(x::BFloat16, y::BFloat16)
     ix, iy = UInt16(x), UInt16(y)
     # NaNs (isnan(x) || isnan(y))
-    somenans(x, y) && return false
+    somenans(ix, iy) && return false
     # Signed zeros
     twozeros(ix, iy) && return false
     return ix < iy
@@ -193,7 +193,7 @@ end
 function (<=)(x::BFloat16, y::BFloat16)
     ix, iy = UInt16(x), UInt16(y)
     # NaNs (isnan(x) || isnan(y))
-    somenans(x, y) && return false
+    somenans(ix, iy) && return false
     # Signed zeros
     twozeros(ix, iy) && return true
     return ix <= iy
@@ -202,7 +202,7 @@ end
 function (>)(x::BFloat16, y::BFloat16)
     ix, iy = UInt16(x), UInt16(y)
     # NaNs (isnan(x) || isnan(y))
-    somenans(x, y) && return false
+    somenans(ix, iy) && return false
     # Signed zeros
     twozeros(ix, iy) && return false
     return ix > iy
@@ -211,7 +211,7 @@ end
 function (>=)(x::BFloat16, y::BFloat16)
     ix, iy = UInt16(x), UInt16(y)
     # NaNs (isnan(x) || isnan(y))
-    somenans(x, y) && return false
+    somenans(ix, iy) && return false
     # Signed zeros
     twozeros(ix, iy) && return true
     return ix >= iy
