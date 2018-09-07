@@ -161,25 +161,25 @@ somenans(ix::UInt16, iy::UInt16) = (ix|iy) & ~sign_mask(BFloat16) > exponent_mas
 # iszero(UInt16(x::BFloat16)) && iszero(UInt16(y::BFloat16))
 twozeros(ix::UInt16, iy::UInt16) = (ix|iy)&~sign_mask(BFloat16) === zero(UInt16)
 
+
+
 for (F,N,Z,C) in (
                   (:(==), :false, :true,  :(===)),
                   (:(!=), :true,  :false, :(!==)),
                   (:(<) , :false, :false, :(<)  ),
                   (:(<=), :false, :true,  :(<=) ),
                   (:(>=), :false, :true,  :(>=) ),
-                  (:(>) , :false, :false, :(>)  )
-    )
+                  (:(>) , :false, :false, :(>)  ) )
   @eval begin
     function ($F)(x::BFloat16, y::BFloat16)
         ix, iy = UInt16(x), UInt16(y)
         somenans(ix, iy) && return $N  # either isnan
         # Signed zeros
         twozeros(ix, iy) && return $Z  # both zeros (+0.0 and/or -0.0)
-        return ($C)(ix, iy)
+        return ($C)(reinterpret(Int16,ix), reinterpret(Int16,iy))
     end
   end
 end
-
 
 
 Base.widen(::Type{BFloat16}) = Float32
