@@ -15,8 +15,8 @@ This package exports the BFloat16 data type. This datatype should behave
 just like any builtin floating point type (e.g. you can construct it from
 other floating point types - e.g. `BFloat16(1.0)`). In addition, this package
 provides the `LowPrecArray` type. This array is supposed to emulate the kind
-of matmul operation that TPUs do well (BFloat16 multiply with Float32)
-accumulate. Broadcasts and scalar operations are peformed in Float32 (as
+of matmul operation that TPUs do well (BFloat16 multiply with Float32
+accumulate). Broadcasts and scalar operations are peformed in Float32 (as
 they would be on a TPU) while matrix multiplies are performed in BFloat16 with
 Float32 accumulates, e.g.
 
