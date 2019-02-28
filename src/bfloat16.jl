@@ -43,7 +43,7 @@ function BFloat16(x::Float32)
     # rounding to lower precision floating point types).
     h = reinterpret(UInt32, x)
     h += 0x7fff + ((h >> 16) & 1)
-    return reinterpret(BFloat16, UInt16(h >> 16))
+    return reinterpret(BFloat16, (h >> 16) % UInt16)
 end
 
 # Expansion to Float32
