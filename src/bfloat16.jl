@@ -95,6 +95,18 @@ function Base.:(<)(x::BFloat16, y::BFloat16)
 	return Float32(x) < Float32(y)
 end
 
+function Base.:(<=)(x::BFloat16, y::BFloat16)
+	return Float32(x) <= Float32(y)
+end
+
+function Base.:(>)(x::BFloat16, y::BFloat16)
+	return Float32(x) > Float32(y)
+end
+
+function Base.:(>=)(x::BFloat16, y::BFloat16)
+	return Float32(x) >= Float32(y)
+end
+
 Base.widen(::Type{BFloat16}) = Float32
 Base.promote_rule(::Type{Float32}, ::Type{BFloat16}) = Float32
 Base.promote_rule(::Type{Float64}, ::Type{BFloat16}) = Float64
