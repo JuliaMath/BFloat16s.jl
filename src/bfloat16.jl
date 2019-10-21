@@ -4,7 +4,6 @@ import Base: isfinite, isnan, precision, iszero,
     +, -, *, /, ^
 
 primitive type BFloat16 <: AbstractFloat 16 end
-BFloat16(x::Integer) = convert(BFloat16, convert(Float32, x))
 
 # Floating point property queries
 for f in (:sign_mask, :exponent_mask, :exponent_one,
@@ -75,6 +74,7 @@ for f in (:+, :-, :*, :/, :^)
 end
 -(x::BFloat16) = reinterpret(BFloat16, reinterpret(UInt16, x) ⊻ sign_mask(BFloat16))
 abs(x::BFloat16) = reinterpret(BFloat16, reinterpret(UInt16, x) & 0x7fff)
+Base.sqrt(x::BFloat16) = BFloat16(sqrt(Float32(x)))
 
 # Floating point comparison
 function Base.:(==)(x::BFloat16, y::BFloat16)

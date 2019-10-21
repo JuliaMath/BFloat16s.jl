@@ -7,3 +7,4 @@ using Test, BFloat16s
 @test Float32(BFloat16(10)) == 1f1
 @test Float64(BFloat16(10)) == 10.0
 @test BFloat16(2) ^ BFloat16(4) == BFloat16(16)
+@test sqrt(BFloat16(4f0)) == BFloat16(2f0)
