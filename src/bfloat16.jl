@@ -1,7 +1,7 @@
 import Base: isfinite, isnan, precision, iszero,
     sign_mask, exponent_mask, exponent_one, exponent_half,
     significand_mask,
-    +, -, *, /
+    +, -, *, /, ^
 
 primitive type BFloat16 <: AbstractFloat 16 end
 BFloat16(x::Integer) = convert(BFloat16, convert(Float32, x))
@@ -46,21 +46,37 @@ function BFloat16(x::Float32)
     return reinterpret(BFloat16, (h >> 16) % UInt16)
 end
 
+# Conversion from Float64
+function BFloat16(x::Float64)
+	BFloat16(Float32(x))
+end
+
+# Conversion from Integer
+function BFloat16(x::Integer)
+	convert(BFloat16, convert(Float32, x))
+end
+
 # Expansion to Float32
 function Base.Float32(x::BFloat16)
     reinterpret(Float32, UInt32(reinterpret(UInt16, x)) << 16)
+end
+
+# Expansion to Float64
+function Base.Float64(x::BFloat16)
+    Float64(Float32(x))
 end
 
 # Truncation to integer types
 Base.unsafe_trunc(T::Type{<:Integer}, x::BFloat16) = unsafe_trunc(T, Float32(x))
 
 # Basic arithmetic
-for f in (:+, :-, :*, :/)
-    @eval ($f)(a::BFloat16, b::BFloat16) = BFloat16($(f)(Float32(a), Float32(b)))
+for f in (:+, :-, :*, :/, :^)
+    @eval ($f)(x::BFloat16, y::BFloat16) = BFloat16($(f)(Float32(x), Float32(y)))
 end
 -(x::BFloat16) = reinterpret(BFloat16, reinterpret(UInt16, x) ⊻ sign_mask(BFloat16))
+abs(x::BFloat16) = reinterpret(BFloat16, reinterpret(UInt16, x) & 0x7fff)
 
-# Floating point comparisoin
+# Floating point comparison
 function Base.:(==)(x::BFloat16, y::BFloat16)
     ix = reinterpret(UInt16, x)
     iy = reinterpret(UInt16, y)
@@ -75,11 +91,19 @@ function Base.:(==)(x::BFloat16, y::BFloat16)
     return ix == iy
 end
 
+function Base.:(<)(x::BFloat16, y::BFloat16)
+	return Float32(x) < Float32(y)
+end
+
 Base.widen(::Type{BFloat16}) = Float32
 Base.promote_rule(::Type{Float32}, ::Type{BFloat16}) = Float32
+Base.promote_rule(::Type{Float64}, ::Type{BFloat16}) = Float64
+for t in (Int8, Int16, Int32, Int64, Int128, UInt8, UInt16, UInt32, UInt64, UInt128)
+    @eval Base.promote_rule(::Type{BFloat16}, ::Type{$t}) = BFloat16
+end
 
 # Wide multiplication
-Base.widemul(a::BFloat16, b::BFloat16) = Float32(a) * Float32(b)
+Base.widemul(x::BFloat16, y::BFloat16) = Float32(x) * Float32(y)
 
 # Showing
 function Base.show(io::IO, x::BFloat16)
