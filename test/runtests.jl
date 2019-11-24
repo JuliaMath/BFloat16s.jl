@@ -35,3 +35,10 @@ end
 	@test round(BFloat16(3.2), RoundNearest) == BFloat16(3.0)
 	@test round(BFloat16(4.8), RoundNearest) == BFloat16(5.0)
 end
+
+@testset "arithmetic" begin
+  @test BFloat16(0.2) * BFloat16(5.0) == BFloat16(1.0)
+  @test BFloat16(1.0) / BFloat16(5.0) == BFloat16(0.2)
+  @test inv(BFloat16(5.0)) == BFloat16(0.2)
+end
+
