@@ -1,7 +1,7 @@
 import Base: isfinite, isnan, precision, iszero, eps,
     sign_mask, exponent_mask, exponent_one, exponent_half,
     significand_mask, round, Int32, Int64,
-    +, -, *, /, ^, ==, <, <=, >=, >, !=,
+    +, -, *, /, ^, ==, <, <=, >=, >, !=, inv,
     abs, sqrt, exp, log, log2, log10, sin, cos, tan, asin,
     acos, atan, sinh, cosh, tanh, asinh, acosh, atan
 
@@ -91,6 +91,13 @@ for F in (:abs, :sqrt, :exp, :log, :log2, :log10,
     $F(x::BFloat16) = BFloat16($F(Float32(x)))
   end
 end
+
+const ZeroBFloat16 = BFloat16(0.0f0)
+const OneBFloat16 = BFloat16(1.0f0)
+Base.zero(::Type{BFloat16}) = ZeroBFloat16
+Base.one(::Type{BFloat16}) = OneBFloat16
+
+inv(x::BFloat16) = one(BFloat16) / x
 
 # Floating point comparison
 function ==(x::BFloat16, y::BFloat16)
