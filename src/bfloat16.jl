@@ -1,7 +1,7 @@
 import Base: isfinite, isnan, precision, iszero,
     sign_mask, exponent_mask, exponent_one, exponent_half,
     significand_mask,
-    +, -, *, /, ^
+    +, -, *, /, ^, inv
 
 primitive type BFloat16 <: AbstractFloat 16 end
 
@@ -75,6 +75,13 @@ end
 -(x::BFloat16) = reinterpret(BFloat16, reinterpret(UInt16, x) ⊻ sign_mask(BFloat16))
 abs(x::BFloat16) = reinterpret(BFloat16, reinterpret(UInt16, x) & 0x7fff)
 Base.sqrt(x::BFloat16) = BFloat16(sqrt(Float32(x)))
+
+const ZeroBFloat16 = BFloat16(0.0f0)
+const OneBFloat16 = BFloat16(1.0f0)
+Base.zero(::Type{BFloat16}) = ZeroBFloat16
+Base.one(::Type{BFloat16}) = OneBFloat16
+
+inv(x::BFloat16) = one(BFloat16) / x
 
 # Floating point comparison
 function Base.:(==)(x::BFloat16, y::BFloat16)
