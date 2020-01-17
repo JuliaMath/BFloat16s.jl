@@ -1,6 +1,6 @@
 import Base: isfinite, isnan, precision, iszero, eps,
     sign_mask, exponent_mask, exponent_one, exponent_half,
-    significand_mask, round,
+    significand_mask, round, Int32, Int64,
     +, -, *, /, ^, ==, <, <=, >=, >, !=,
     abs, sqrt, exp, log, log2, log10, sin, cos, tan, asin,
     acos, atan, sinh, cosh, tanh, asinh, acosh, atan
@@ -22,6 +22,9 @@ eps(::Type{BFloat16}) = Base.bitcast(BFloat16, 0x3c00)
 round(x::BFloat16, r::RoundingMode{:Up}) = BFloat16(ceil(Float32(x)))
 round(x::BFloat16, r::RoundingMode{:Down}) = BFloat16(floor(Float32(x)))
 round(x::BFloat16, r::RoundingMode{:Nearest}) = BFloat16(round(Float32(x)))
+
+Int64(x::BFloat16) = Int64(Float32(x))
+Int32(x::BFloat16) = Int32(Float32(x))
 
 ## floating point traits ##
 """
