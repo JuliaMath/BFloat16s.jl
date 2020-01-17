@@ -1,6 +1,6 @@
 import Base: isfinite, isnan, precision, iszero, eps,
     sign_mask, exponent_mask, exponent_one, exponent_half,
-    significand_mask,
+    significand_mask, round,
     +, -, *, /, ^, ==, <, <=, >=, >, !=,
     abs, sqrt, exp, log, log2, log10, sin, cos, tan, asin,
     acos, atan, sinh, cosh, tanh, asinh, acosh, atan
@@ -18,6 +18,10 @@ isfinite(x::BFloat16) = (reinterpret(UInt16,x) & exponent_mask(BFloat16)) != exp
 isnan(x::BFloat16) = (reinterpret(UInt16,x) & ~sign_mask(BFloat16)) > exponent_mask(BFloat16)
 precision(::Type{BFloat16}) = 8
 eps(::Type{BFloat16}) = Base.bitcast(BFloat16, 0x3c00)
+
+round(x::BFloat16, r::RoundingMode{:Up}) = BFloat16(ceil(Float32(x)))
+round(x::BFloat16, r::RoundingMode{:Down}) = BFloat16(floor(Float32(x)))
+round(x::BFloat16, r::RoundingMode{:Nearest}) = BFloat16(round(Float32(x)))
 
 ## floating point traits ##
 """
