@@ -4,5 +4,6 @@ module BFloat16s
 
     include("bfloat16.jl")
     include("lowprecarrays.jl")
+    include("printf.jl")
 
 end
