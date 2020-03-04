@@ -11,12 +11,12 @@ for f in (:sign_mask, :exponent_mask, :exponent_one,
     @eval $(f)(::Type{BFloat16}) = UInt16($(f)(Float32) >> 16)
 end
 
-iszero(x::BFloat16) = reinterpret(BFloat16, x) & ~sign_mask(BFloat16) == 0x0000
+iszero(x::BFloat16) = reinterpret(UInt16, x) & ~sign_mask(BFloat16) == 0x0000
 isfinite(x::BFloat16) = (reinterpret(UInt16,x) & exponent_mask(BFloat16)) != exponent_mask(BFloat16)
 isnan(x::BFloat16) = (reinterpret(UInt16,x) & ~sign_mask(BFloat16)) > exponent_mask(BFloat16)
 precision(::Type{BFloat16}) = 8
 
-## floating point traits ##
+# floating point traits #
 """
     InfB16
 Positive infinity of type [`BFloat16`](@ref).
@@ -35,9 +35,16 @@ Base.trunc(::Type{BFloat16}, x::Float32) = reinterpret(BFloat16,
         (reinterpret(UInt32, x) >> 16) % UInt16
     )
 
+const epsBF16 = 0.0078125f0
+
 # Conversion from Float32
 function BFloat16(x::Float32)
     isnan(x) && return NaNB16
+
+	# stochastic rounding, e is the base 2 exponent of x (sign and signficand set to zero)
+	e = reinterpret(Float32,reinterpret(UInt32,x) & exponent_mask(Float32))
+	x += epsBF16*e*(rand(Float32)-0.5f0)
+
     # Round to nearest even (matches TensorFlow and our convention for
     # rounding to lower precision floating point types).
     h = reinterpret(UInt32, x)
