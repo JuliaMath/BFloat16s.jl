@@ -44,9 +44,9 @@ Base.round(x::BFloat16, r::RoundingMode{:Nearest}) = BFloat16(round(Float32(x)))
 Base.Int64(x::BFloat16) = Int64(Float32(x))
 
 # same for BFloat16sr, but do not apply stochastic rounding to avoid InexactError
-Base.round(x::BFloat16, r::RoundingMode{:Up}) = BFloat16(ceil(Float32(x)))
-Base.round(x::BFloat16, r::RoundingMode{:Down}) = BFloat16(floor(Float32(x)))
-Base.round(x::BFloat16, r::RoundingMode{:Nearest}) = BFloat16(round(Float32(x)))
+Base.round(x::BFloat16, r::RoundingMode{:Up}) = reinterpret(BFloat16sr,BFloat16(ceil(Float32(x))))
+Base.round(x::BFloat16, r::RoundingMode{:Down}) = reinterpret(BFloat16sr,BFloat16(floor(Float32(x))))
+Base.round(x::BFloat16, r::RoundingMode{:Nearest}) = reinterpret(BFloat16sr,BFloat16(round(Float32(x))))
 Base.Int64(x::BFloat16) = Int64(Float32(x))
 
 # Conversion from Float32
