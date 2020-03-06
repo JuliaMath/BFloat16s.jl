@@ -14,6 +14,12 @@ isnan(x::Union{BFloat16,BFloat16sr}) = (reinterpret(UInt16,x) & ~sign_mask(BFloa
 precision(::Type{BFloat16}) = 8
 precision(::Type{BFloat16sr}) = 8
 
+Base.one(::Type{BFloat16}) = reinterpret(BFloat16,0x3f80)
+Base.one(::Type{BFloat16sr}) = reinterpret(BFloat16sr,0x3f80)
+
+Base.zero(::Type{BFloat16}) = reinterpret(BFloat16,0x0000)
+Base.zero(::Type{BFloat16sr}) = reinterpret(BFloat16sr,0x0000)
+
 # floating point traits #
 """
     InfB16
@@ -75,8 +81,7 @@ function BFloat16sr(x::Float32)
 	e = reinterpret(Float32,reinterpret(UInt32,x) & exponent_mask(Float32))
 	x += epsBF16*e*(rand(Float32)-0.5f0)
 
-    # Round to nearest even (matches TensorFlow and our convention for
-    # rounding to lower precision floating point types).
+    # Round to nearest after stochastic perturbation
     h = reinterpret(UInt32, x)
     h += 0x7fff + ((h >> 16) & 1)
     return reinterpret(BFloat16, (h >> 16) % UInt16)
@@ -111,8 +116,8 @@ function Base.Float64(x::Union{BFloat16,BFloat16sr})
     Float64(Float32(x))
 end
 
-BFloat16(x::BFloat16sr) = reinterpret(BFloat16,x)
-BFloat16sr(x::BFloat16) = reinterpret(BFloat16sr,x)
+# BFloat16(x::BFloat16sr) = reinterpret(BFloat16,x)
+# BFloat16sr(x::BFloat16) = reinterpret(BFloat16sr,x)
 
 # Truncation to integer types
 Base.unsafe_trunc(T::Type{<:Integer}, x::Union{BFloat16,BFloat16sr}) = unsafe_trunc(T, Float32(x))
@@ -175,7 +180,6 @@ Base.promote_rule(::Type{Float64}, ::Type{BFloat16sr}) = Float64
 
 Base.promote_rule(::Type{BFloat16}, ::Type{BFloat16sr}) = BFloat16
 
-
 for t in (Int8, Int16, Int32, Int64, Int128, UInt8, UInt16, UInt32, UInt64, UInt128)
     @eval Base.promote_rule(::Type{BFloat16}, ::Type{$t}) = BFloat16
 	@eval Base.promote_rule(::Type{BFloat16sr}, ::Type{$t}) = BFloat16sr
@@ -201,16 +205,16 @@ end
 
 # Showing
 function Base.show(io::IO, x::BFloat16sr)
-    hastypeinfo = BFloat16 === get(io, :typeinfo, Any)
     if isinf(x)
         print(io, x < 0 ? "-InfB16" : "InfB16")
     elseif isnan(x)
         print(io, "NaNB16")
     else
-        hastypeinfo || print(io, "BFloat16sr(")
-        show(IOContext(io, :typeinfo=>Float32), Float32(x))
-        hastypeinfo || print(io, ")")
+		io2 = IOBuffer()
+        print(io2,Float32(x))
+        f = String(take!(io2))
+        print(io,"BFloat16sr("*f*")")
     end
 end
 
-bitstring(x::Union{BFloat16,BFloat16sr}) = bistring(reinterpret(UInt16,x))
+Base.bitstring(x::Union{BFloat16,BFloat16sr}) = bistring(reinterpret(UInt16,x))
