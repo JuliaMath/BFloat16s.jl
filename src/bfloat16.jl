@@ -50,9 +50,9 @@ Base.round(x::BFloat16, r::RoundingMode{:Nearest}) = BFloat16(round(Float32(x)))
 Base.Int64(x::BFloat16) = Int64(Float32(x))
 
 # same for BFloat16sr, but do not apply stochastic rounding to avoid InexactError
-Base.round(x::BFloat16sr, r::RoundingMode{:Up}) = reinterpret(BFloat16sr,BFloat16(ceil(Float32(x))))
-Base.round(x::BFloat16sr, r::RoundingMode{:Down}) = reinterpret(BFloat16sr,BFloat16(floor(Float32(x))))
-Base.round(x::BFloat16sr, r::RoundingMode{:Nearest}) = reinterpret(BFloat16sr,BFloat16(round(Float32(x))))
+Base.round(x::BFloat16sr, r::RoundingMode{:Up}) = BFloat16sr(ceil(Float32(x)))
+Base.round(x::BFloat16sr, r::RoundingMode{:Down}) = BFloat16sr(floor(Float32(x)))
+Base.round(x::BFloat16sr, r::RoundingMode{:Nearest}) = BFloat16sr(round(Float32(x)))
 Base.Int64(x::BFloat16sr) = Int64(Float32(x))
 
 # Conversion from Float32
@@ -71,8 +71,19 @@ Machine epsilon for BFloat16 as Float32.
 """
 const epsBF16 = 0.0078125f0
 
-# Conversion from Float32 with distance proportional stochastic rounding
+# Conversion from Float32 with deterministic rounding
 function BFloat16sr(x::Float32)
+    isnan(x) && return NaNB16
+	# Round to nearest even (matches TensorFlow and our convention for
+    # rounding to lower precision floating point types).
+    h = reinterpret(UInt32, x)
+    h += 0x7fff + ((h >> 16) & 1)
+    return reinterpret(BFloat16sr, (h >> 16) % UInt16)
+end
+
+# Conversion from Float32 with distance proportional stochastic rounding
+# only used within arithmetic operations
+function BFloat16_stochastic_round(x::Float32)
     isnan(x) && return NaNB16
 
 	# stochastic rounding, e is the base 2 exponent of x (sign and signficand set to zero)
@@ -84,8 +95,9 @@ function BFloat16sr(x::Float32)
     # Round to nearest after stochastic perturbation
     h = reinterpret(UInt32, x)
     h += 0x7fff + ((h >> 16) & 1)
-    return reinterpret(BFloat16, (h >> 16) % UInt16)
+    return reinterpret(BFloat16sr, (h >> 16) % UInt16)
 end
+
 
 # Conversion from Float64
 function BFloat16(x::Float64)
@@ -125,7 +137,7 @@ Base.unsafe_trunc(T::Type{<:Integer}, x::Union{BFloat16,BFloat16sr}) = unsafe_tr
 # Basic arithmetic
 for f in (:+, :-, :*, :/, :^)
     @eval ($f)(x::BFloat16, y::BFloat16) = BFloat16($(f)(Float32(x), Float32(y)))
-	@eval ($f)(x::BFloat16sr, y::BFloat16sr) = BFloat16sr($(f)(Float32(x), Float32(y)))
+	@eval ($f)(x::BFloat16sr, y::BFloat16sr) = BFloat16_stochastic_round($(f)(Float32(x), Float32(y)))
 end
 
 -(x::BFloat16) = reinterpret(BFloat16, reinterpret(UInt16, x) ⊻ sign_mask(BFloat16))
@@ -136,7 +148,11 @@ abs(x::BFloat16) = reinterpret(BFloat16, reinterpret(UInt16, x) & 0x7fff)
 abs(x::BFloat16sr) = reinterpret(BFloat16sr, reinterpret(UInt16, x) & 0x7fff)
 
 Base.sqrt(x::BFloat16) = BFloat16(sqrt(Float32(x)))
-Base.sqrt(x::BFloat16sr) = BFloat16sr(sqrt(Float32(x)))
+Base.sqrt(x::BFloat16sr) = BFloat16_stochastic_round(sqrt(Float32(x)))
+
+Base.cbrt(x::BFloat16) = BFloat16(cbrt(Float32(x)))
+Base.cbrt(x::BFloat16sr) = BFloat16_stochastic_round(cbrt(Float32(x)))
+
 
 # Floating point comparison
 function Base.:(==)(x::T, y::T) where {T<:Union{BFloat16,BFloat16sr}}
@@ -178,7 +194,7 @@ Base.promote_rule(::Type{Float64}, ::Type{BFloat16}) = Float64
 Base.promote_rule(::Type{Float32}, ::Type{BFloat16sr}) = Float32
 Base.promote_rule(::Type{Float64}, ::Type{BFloat16sr}) = Float64
 
-Base.promote_rule(::Type{BFloat16}, ::Type{BFloat16sr}) = BFloat16
+# Base.promote_rule(::Type{BFloat16}, ::Type{BFloat16sr}) = BFloat16
 
 for t in (Int8, Int16, Int32, Int64, Int128, UInt8, UInt16, UInt32, UInt64, UInt128)
     @eval Base.promote_rule(::Type{BFloat16}, ::Type{$t}) = BFloat16
@@ -217,4 +233,4 @@ function Base.show(io::IO, x::BFloat16sr)
     end
 end
 
-Base.bitstring(x::Union{BFloat16,BFloat16sr}) = bistring(reinterpret(UInt16,x))
+Base.bitstring(x::Union{BFloat16,BFloat16sr}) = bitstring(reinterpret(UInt16,x))
