@@ -44,10 +44,10 @@ Base.round(x::BFloat16, r::RoundingMode{:Nearest}) = BFloat16(round(Float32(x)))
 Base.Int64(x::BFloat16) = Int64(Float32(x))
 
 # same for BFloat16sr, but do not apply stochastic rounding to avoid InexactError
-Base.round(x::BFloat16, r::RoundingMode{:Up}) = reinterpret(BFloat16sr,BFloat16(ceil(Float32(x))))
-Base.round(x::BFloat16, r::RoundingMode{:Down}) = reinterpret(BFloat16sr,BFloat16(floor(Float32(x))))
-Base.round(x::BFloat16, r::RoundingMode{:Nearest}) = reinterpret(BFloat16sr,BFloat16(round(Float32(x))))
-Base.Int64(x::BFloat16) = Int64(Float32(x))
+Base.round(x::BFloat16sr, r::RoundingMode{:Up}) = reinterpret(BFloat16sr,BFloat16(ceil(Float32(x))))
+Base.round(x::BFloat16sr, r::RoundingMode{:Down}) = reinterpret(BFloat16sr,BFloat16(floor(Float32(x))))
+Base.round(x::BFloat16sr, r::RoundingMode{:Nearest}) = reinterpret(BFloat16sr,BFloat16(round(Float32(x))))
+Base.Int64(x::BFloat16sr) = Int64(Float32(x))
 
 # Conversion from Float32
 function BFloat16(x::Float32)
@@ -111,6 +111,9 @@ function Base.Float64(x::Union{BFloat16,BFloat16sr})
     Float64(Float32(x))
 end
 
+BFloat16(x::BFloat16sr) = reinterpret(BFloat16,x)
+BFloat16sr(x::BFloat16) = reinterpret(BFloat16sr,x)
+
 # Truncation to integer types
 Base.unsafe_trunc(T::Type{<:Integer}, x::Union{BFloat16,BFloat16sr}) = unsafe_trunc(T, Float32(x))
 
@@ -171,6 +174,7 @@ Base.promote_rule(::Type{Float32}, ::Type{BFloat16sr}) = Float32
 Base.promote_rule(::Type{Float64}, ::Type{BFloat16sr}) = Float64
 
 Base.promote_rule(::Type{BFloat16}, ::Type{BFloat16sr}) = BFloat16
+
 
 for t in (Int8, Int16, Int32, Int64, Int128, UInt8, UInt16, UInt32, UInt64, UInt128)
     @eval Base.promote_rule(::Type{BFloat16}, ::Type{$t}) = BFloat16
