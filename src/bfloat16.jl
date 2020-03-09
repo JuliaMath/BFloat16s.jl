@@ -1,3 +1,8 @@
+import Base: isfinite, isnan, precision, iszero,
+	sign_mask, exponent_mask, exponent_one, exponent_half,
+	significand_mask,
+	+, -, *, /, ^
+
 primitive type BFloat16 <: AbstractFloat 16 end			# deterministic rounding
 primitive type BFloat16sr <: AbstractFloat 16 end		# stochastic rounding
 
@@ -70,6 +75,9 @@ end
 Machine epsilon for BFloat16 as Float32.
 """
 const epsBF16 = 0.0078125f0
+const epsBF16_half = epsBF16/2
+const eps_quarter = 0x00004000
+const F32_one = reinterpret(UInt32,one(Float32))
 
 # Conversion from Float32 with deterministic rounding
 function BFloat16sr(x::Float32)
@@ -90,7 +98,14 @@ function BFloat16_stochastic_round(x::Float32)
 	#TODO test other RNG, Xorshift64?
 	#TODO there's currently a 0.001% chance to produce an overflow with bfloatmax::Float32
 	e = reinterpret(Float32,reinterpret(UInt32,x) & exponent_mask(Float32))
-	x += epsBF16*e*(rand(Float32)-0.5f0)
+	sig = reinterpret(UInt32,x) & significand_mask(Float32)
+
+	if sig < eps_quarter	# special case for rounding within 2^n <= x < nextfloat(2^n)/4
+		frac = reinterpret(Float32,F32_one | (sig << 7)) - 1f0
+		x += e*epsBF16_half*(rand(Float32) + frac)
+	else
+		x += epsBF16*e*(rand(Float32)-0.5f0)
+	end
 
     # Round to nearest after stochastic perturbation
     h = reinterpret(UInt32, x)
@@ -234,3 +249,15 @@ function Base.show(io::IO, x::BFloat16sr)
 end
 
 Base.bitstring(x::Union{BFloat16,BFloat16sr}) = bitstring(reinterpret(UInt16,x))
+
+function Base.bitstring(x::Union{BFloat16,BFloat16sr,Float32},mode::Symbol)
+    if mode == :split	# split into sign, exponent, signficand
+        s = bitstring(x)
+		return "$(s[1]) $(s[2:9]) $(s[10:end])"
+	elseif mode == :split16
+		s = bitstring(x)
+		return "$(s[1]) $(s[2:9]) $(s[10:16]) $(s[17:end])"
+    else
+        return bitstring(x)
+    end
+end
