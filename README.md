@@ -76,7 +76,7 @@ BFloat16sr(0.33398438)
 julia> a/3
 BFloat16sr(0.33203125)
 ```
-As `1/3` is not exactly representable the rounding will be at 66.6% chance towards 0.33398438 and at 33.3% towards 0.33203125 such that in expectation the result is 0.33333... and therefore exact. You can use `BFloat16_frac(x::Float32)` to get the chance that `x` will be round up.
+As `1/3` is not exactly representable the rounding will be at 66.6% chance towards 0.33398438 and at 33.3% towards 0.33203125 such that in expectation the result is 0.33333... and therefore exact. You can use `BFloat16_chance_roundup(x::Float32)` to get the chance that `x` will be round up.
 
 ### Performance
 
