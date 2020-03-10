@@ -118,6 +118,15 @@ function BFloat16_stochastic_round(x::Float32)
     return reinterpret(BFloat16sr, (ui >> 16) % UInt16)
 end
 
+function BFloat16_chance_roundup(x::Float32)
+    isnan(x) && return NaNB16
+	ui = reinterpret(UInt32, x)
+	# sig is the signficand (exponents & sign is masked out)
+	sig = ui & significand_mask(Float32)
+	frac = reinterpret(Float32,F32_one | (sig << 7)) - 1f0
+    return frac
+end
+
 # Conversion from Float64
 function BFloat16(x::Float64)
 	BFloat16(Float32(x))
@@ -278,7 +287,7 @@ function Base.bitstring(x::Union{BFloat16,BFloat16sr,Float32},mode::Symbol)
     end
 end
 
-function nextfloat(x::T) where {T<:Union{BFloat16,BFloat16sr}}
+function Base.nextfloat(x::T) where {T<:Union{BFloat16,BFloat16sr}}
     if isfinite(x)
 		ui = reinterpret(UInt16,x)
 		if ui < 0x8000	# positive numbers
@@ -293,7 +302,7 @@ function nextfloat(x::T) where {T<:Union{BFloat16,BFloat16sr}}
 	end
 end
 
-function prevfloat(x::T) where {T<:Union{BFloat16,BFloat16sr}}
+function Base.prevfloat(x::T) where {T<:Union{BFloat16,BFloat16sr}}
     if isfinite(x)
 		ui = reinterpret(UInt16,x)
 		if ui == 0x0000		# =zero(T)
