@@ -3,6 +3,9 @@ import Base: isfinite, isnan, precision, iszero,
 	significand_mask,
 	+, -, *, /, ^
 
+using RandomNumbers.Xorshifts
+const Xor128 = Xoroshiro128Plus()
+
 primitive type BFloat16 <: AbstractFloat 16 end			# deterministic rounding
 primitive type BFloat16sr <: AbstractFloat 16 end		# stochastic rounding
 
@@ -74,9 +77,9 @@ end
     epsBF16
 Machine epsilon for BFloat16 as Float32.
 """
-const epsBF16 = 0.0078125f0
+const epsBF16 = 0.0078125f0							# machine epsilon of BFloat16 as Float32
 const epsBF16_half = epsBF16/2
-const eps_quarter = 0x00004000
+const eps_quarter = 0x00004000						# a quarter of eps as Float32 sig bits
 const F32_one = reinterpret(UInt32,one(Float32))
 
 # Conversion from Float32 with deterministic rounding
@@ -94,25 +97,45 @@ end
 function BFloat16_stochastic_round(x::Float32)
     isnan(x) && return NaNB16
 
-	# stochastic rounding, e is the base 2 exponent of x (sign and signficand set to zero)
-	#TODO test other RNG, Xorshift64?
-	#TODO there's currently a 0.001% chance to produce an overflow with bfloatmax::Float32
-	e = reinterpret(Float32,reinterpret(UInt32,x) & exponent_mask(Float32))
-	sig = reinterpret(UInt32,x) & significand_mask(Float32)
+	ui = reinterpret(UInt32, x)
 
-	if sig < eps_quarter	# special case for rounding within 2^n <= x < nextfloat(2^n)/4
-		frac = reinterpret(Float32,F32_one | (sig << 7)) - 1f0
-		x += e*epsBF16_half*(rand(Float32) + frac)
-	else
-		x += epsBF16*e*(rand(Float32)-0.5f0)
-	end
+	# stochastic rounding
+	# e is the base 2 exponent of x (sign and signficand set to zero)
+	e = reinterpret(Float32,ui & exponent_mask(Float32))
+
+	# sig is the signficand (exponents & sign is masked out)
+	sig = ui & significand_mask(Float32)
+
+	# special case for rounding within 2^n <= x < 2^n+nextfloat(2^n)/4 due to doubling of eps towards nextfloat
+	q = sig < eps_quarter
+	frac = q ? reinterpret(Float32,F32_one | (sig << 7)) - 1f0 : 0.5f0
+	eps = q ? epsBF16_half : epsBF16
+	x += e*eps*(rand(Xor128,Float32) - frac)
 
     # Round to nearest after stochastic perturbation
-    h = reinterpret(UInt32, x)
-    h += 0x7fff + ((h >> 16) & 1)
-    return reinterpret(BFloat16sr, (h >> 16) % UInt16)
+	ui = reinterpret(UInt32, x)
+    ui += 0x7fff + ((ui >> 16) & 1)
+    return reinterpret(BFloat16sr, (ui >> 16) % UInt16)
 end
 
+function BFloat16_frac(x::Float32)
+    isnan(x) && return NaNB16
+
+	ui = reinterpret(UInt32, x)
+
+	# stochastic rounding
+	# e is the base 2 exponent of x (sign and signficand set to zero)
+	e = reinterpret(Float32,ui & exponent_mask(Float32))
+
+	# sig is the signficand (exponents & sign is masked out)
+	sig = ui & significand_mask(Float32)
+
+	# special case for rounding within 2^n <= x < 2^n+nextfloat(2^n)/4 due to doubling of eps towards nextfloat
+	q = sig < eps_quarter
+	frac = reinterpret(Float32,F32_one | (sig << 7)) - 1f0
+	eps = q ? epsBF16_half : epsBF16
+	return [0.5f0*(0-frac),0.5f0*(1-frac)]
+end
 
 # Conversion from Float64
 function BFloat16(x::Float64)
@@ -162,12 +185,20 @@ end
 abs(x::BFloat16) = reinterpret(BFloat16, reinterpret(UInt16, x) & 0x7fff)
 abs(x::BFloat16sr) = reinterpret(BFloat16sr, reinterpret(UInt16, x) & 0x7fff)
 
-Base.sqrt(x::BFloat16) = BFloat16(sqrt(Float32(x)))
-Base.sqrt(x::BFloat16sr) = BFloat16_stochastic_round(sqrt(Float32(x)))
+for func in (:sin,:cos,:tan,:asin,:acos,:atan,:sinh,:cosh,:tanh,:asinh,:acosh,
+             :atanh,:exp,:exp2,:exp10,:expm1,:log,:log2,:log10,:sqrt,:cbrt,:log1p)
+    @eval begin
+        Base.$func(a::BFloat16) = BFloat16($func(Float32(a)))
+        Base.$func(a::BFloat16sr) = BFloat16_stochastic_round($func(Float32(a)))
+    end
+end
 
-Base.cbrt(x::BFloat16) = BFloat16(cbrt(Float32(x)))
-Base.cbrt(x::BFloat16sr) = BFloat16_stochastic_round(cbrt(Float32(x)))
-
+for func in (:atan,:hypot)
+    @eval begin
+        $func(a::BFloat16,b::BFloat16) = BFloat16($func(Float32(a),Float32(b)))
+        $func(a::BFloat16sr,b::BFloat16sr) = BFloat16_stochastic_round($func(Float32(a),Float32(b)))
+    end
+end
 
 # Floating point comparison
 function Base.:(==)(x::T, y::T) where {T<:Union{BFloat16,BFloat16sr}}
@@ -256,8 +287,42 @@ function Base.bitstring(x::Union{BFloat16,BFloat16sr,Float32},mode::Symbol)
 		return "$(s[1]) $(s[2:9]) $(s[10:end])"
 	elseif mode == :split16
 		s = bitstring(x)
-		return "$(s[1]) $(s[2:9]) $(s[10:16]) $(s[17:end])"
+		if length(s) == 16
+			return "$(s[1]) $(s[2:9]) $(s[10:end])"
+		else
+			return "$(s[1]) $(s[2:9]) $(s[10:16]) $(s[17:end])"
+		end
     else
         return bitstring(x)
     end
+end
+
+function nextfloat(x::T) where {T<:Union{BFloat16,BFloat16sr}}
+    if isfinite(x)
+		ui = reinterpret(UInt16,x)
+		if ui < 0x8000	# positive numbers
+			return reinterpret(T,ui+0x0001)
+		elseif ui == 0x8000		# =-zero(T)
+			return reinterpret(T,0x0001)
+		else				# negative numbers
+			return reinterpret(T,ui-0x0001)
+		end
+	else	# NaN / Inf case
+		return x
+	end
+end
+
+function prevfloat(x::T) where {T<:Union{BFloat16,BFloat16sr}}
+    if isfinite(x)
+		ui = reinterpret(UInt16,x)
+		if ui == 0x0000		# =zero(T)
+			return reinterpret(T,0x8001)
+		elseif ui < 0x8000	# positive numbers
+			return reinterpret(T,ui-0x0001)
+		else				# negative numbers
+			return reinterpret(T,ui+0x0001)
+		end
+	else	# NaN / Inf case
+		return x
+	end
 end
