@@ -1,13 +1,13 @@
 module BFloat16s
 
     export BFloat16, BFloat16sr,
+            BFloat16_stochastic_round,
             NaNB16, InfB16,
             LowPrecArray
 
-    import Base: isfinite, isnan, precision, iszero,
-        sign_mask, exponent_mask, exponent_one, exponent_half,
-        significand_mask,
-        +, -, *, /, ^
+    using RandomNumbers.Xorshifts
+
+    RNG = Xoroshiro128Plus()
 
     include("bfloat16.jl")
     include("lowprecarrays.jl")
