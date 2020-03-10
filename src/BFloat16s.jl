@@ -5,10 +5,6 @@ module BFloat16s
             NaNB16, InfB16,
             LowPrecArray
 
-    using RandomNumbers.Xorshifts
-
-    RNG = Xoroshiro128Plus()
-
     include("bfloat16.jl")
     include("lowprecarrays.jl")
 
