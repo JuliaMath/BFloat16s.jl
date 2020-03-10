@@ -278,7 +278,7 @@ function Base.bitstring(x::Union{BFloat16,BFloat16sr,Float32},mode::Symbol)
     end
 end
 
-function nextfloat(x::T) where {T<:Union{BFloat16,BFloat16sr}}
+function Base.nextfloat(x::T) where {T<:Union{BFloat16,BFloat16sr}}
     if isfinite(x)
 		ui = reinterpret(UInt16,x)
 		if ui < 0x8000	# positive numbers
@@ -293,7 +293,7 @@ function nextfloat(x::T) where {T<:Union{BFloat16,BFloat16sr}}
 	end
 end
 
-function prevfloat(x::T) where {T<:Union{BFloat16,BFloat16sr}}
+function Base.prevfloat(x::T) where {T<:Union{BFloat16,BFloat16sr}}
     if isfinite(x)
 		ui = reinterpret(UInt16,x)
 		if ui == 0x0000		# =zero(T)
