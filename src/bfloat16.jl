@@ -118,25 +118,6 @@ function BFloat16_stochastic_round(x::Float32)
     return reinterpret(BFloat16sr, (ui >> 16) % UInt16)
 end
 
-function BFloat16_frac(x::Float32)
-    isnan(x) && return NaNB16
-
-	ui = reinterpret(UInt32, x)
-
-	# stochastic rounding
-	# e is the base 2 exponent of x (sign and signficand set to zero)
-	e = reinterpret(Float32,ui & exponent_mask(Float32))
-
-	# sig is the signficand (exponents & sign is masked out)
-	sig = ui & significand_mask(Float32)
-
-	# special case for rounding within 2^n <= x < 2^n+nextfloat(2^n)/4 due to doubling of eps towards nextfloat
-	q = sig < eps_quarter
-	frac = reinterpret(Float32,F32_one | (sig << 7)) - 1f0
-	eps = q ? epsBF16_half : epsBF16
-	return [0.5f0*(0-frac),0.5f0*(1-frac)]
-end
-
 # Conversion from Float64
 function BFloat16(x::Float64)
 	BFloat16(Float32(x))
@@ -166,8 +147,8 @@ function Base.Float64(x::Union{BFloat16,BFloat16sr})
     Float64(Float32(x))
 end
 
-# BFloat16(x::BFloat16sr) = reinterpret(BFloat16,x)
-# BFloat16sr(x::BFloat16) = reinterpret(BFloat16sr,x)
+BFloat16(x::BFloat16sr) = reinterpret(BFloat16,x)
+BFloat16sr(x::BFloat16) = reinterpret(BFloat16sr,x)
 
 # Truncation to integer types
 Base.unsafe_trunc(T::Type{<:Integer}, x::Union{BFloat16,BFloat16sr}) = unsafe_trunc(T, Float32(x))
