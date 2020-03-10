@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/JuliaComputing/BFloat16s.jl.svg?branch=master)](https://travis-ci.com/JuliaComputing/BFloat16s.jl.svg)
+
 # BFloat16s
 
 This package defines the [BFloat16 data type](https://en.wikipedia.org/wiki/Bfloat16_floating-point_format).
@@ -9,7 +11,13 @@ hardware. Note that this package is designed for functionality, not performance,
 so this package should be used for precision experiments only, not performance
 experiments.
 
-# Usage
+### BFloat16 + stochastic rounding
+
+This package also exports `BFloat16sr`, BFloat16 with stochastic rounding that is proportional to the distance of the next representable numbers and therefore [exact in expectation](https://en.wikipedia.org/wiki/Rounding#Stochastic_rounding). Although there is currently no known hardware implementation available, [Graphcore is working on IPUs with stochastic rounding](https://www.graphcore.ai/posts/directions-of-ai-research). Stochastic rounding makes the current `BFloat16` implementation considerably slower, but is still faster than Julia's `Float16`. [Xoroshio128Plus](https://sunoru.github.io/RandomNumbers.jl/stable/man/xorshifts/#Xorshift-Family-1), a random number generator from the [Xorshift family](https://en.wikipedia.org/wiki/Xorshift), is used through the [RandomNumbers.jl](https://github.com/sunoru/RandomNumbers.jl) package.
+
+Stochastic rounding is only applied on arithmetic operations, and not on type conversions or for subnormal numbers (standard round to nearest instead).
+
+### Usage
 
 This package exports the BFloat16 data type. This datatype should behave
 just like any builtin floating point type (e.g. you can construct it from
@@ -57,3 +65,33 @@ julia> Float64.(A.storage)^2
 Note that the low precision result differs from (is less precise than) the
 result computed in Float32 arithmetic (which matches the result in Float64
 precision).
+
+### Usage BFloat16 + stochastic rounding
+
+```julia
+julia> a = BFloat16sr(1.0)
+BFloat16sr(1.0)
+julia> a/3
+BFloat16sr(0.33398438)
+julia> a/3
+BFloat16sr(0.33203125)
+```
+As `1/3` is not exactly representable the rounding will be at 66.6% chance towards 0.33398438 and at 33.3% towards 0.33203125 such that in expectation the result is 0.33333... and therefore exact. You can use `BFloat16_frac(x::Float32)` to get the chance that `x` will be round up.
+
+### Performance
+
+```julia
+julia> using BFloat16s, BenchmarkTools
+julia> A = rand(Float32,1000,1000);
+julia> B = BFloat16.(A);
+julia> C = BFloat16sr.(A);
+julia> @btime +($A,$A);
+  310.638 μs (2 allocations: 3.81 MiB)
+
+julia> @btime +($B,$B);
+  567.917 μs (2 allocations: 1.91 MiB)
+
+julia> @btime +($C,$C);
+  8.518 ms (8 allocations: 1.91 MiB)
+```
+Stochastic rounding imposes a ~x15 performance decrease.
