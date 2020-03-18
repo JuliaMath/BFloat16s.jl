@@ -1,8 +1,6 @@
 using Test, BFloat16s
 
 @testset "Comparisons" begin
-
-    # DETERMINISTIC ROUNDING
     @test BFloat16(1)   <  BFloat16(2)
     @test BFloat16(1f0) <  BFloat16(2f0)
     @test BFloat16(1.0) <  BFloat16(2.0)
@@ -14,228 +12,105 @@ using Test, BFloat16s
     @test BFloat16(2)   >= BFloat16(1)
     @test BFloat16(2f0) >= BFloat16(1f0)
     @test BFloat16(2.0) >= BFloat16(1.0)
-
-    #STOCHASTIC ROUNDING
-    @test BFloat16sr(1)   <  BFloat16sr(2)
-    @test BFloat16sr(1f0) <  BFloat16sr(2f0)
-    @test BFloat16sr(1.0) <  BFloat16sr(2.0)
-    @test BFloat16sr(1)   <= BFloat16sr(2)
-    @test BFloat16sr(1f0) <= BFloat16sr(2f0)
-    @test BFloat16sr(1.0) <= BFloat16sr(2.0)
-    @test BFloat16sr(2)   >  BFloat16sr(1)
-    @test BFloat16sr(2f0) >  BFloat16sr(1f0)
-    @test BFloat16sr(2)   >= BFloat16sr(1)
-    @test BFloat16sr(2f0) >= BFloat16sr(1f0)
-    @test BFloat16sr(2.0) >= BFloat16sr(1.0)
+    @test InfB16 > -InfB16
+    @test NaNB16 != NaNB16
 end
 
-N = 10000
+@testset "Sign flip" begin
+    @test one(BFloat16) == -(-(one(BFloat16)))
+    @test zero(BFloat16) == -(zero(BFloat16))
+end
 
-@testset "1.0 always to 1.0" begin
-    for i = 1:N
-        @test 1.0f0 == Float32(BFloat16(1.0f0))
-        @test 1.0f0 == Float32(BFloat16sr(1.0f0))
-        @test 1.0f0 == Float32(BFloat16_stochastic_round(1.0f0))
+@testset "Integer promotion" begin
+    f = BFloat16(1)
+    @test 2f == BFloat16(2)
+    @test 0 == BFloat16(0)
+end
+
+@testset "Rounding" begin
+    @test 1 == Int(round(BFloat16(1.2)))
+    @test 1 == Int(floor(BFloat16(1.2)))
+    @test 2 == Int(ceil(BFloat16(1.2)))
+
+    @test -1 == Int(round(BFloat16(-1.2)))
+    @test -2 == Int(floor(BFloat16(-1.2)))
+    @test -1 == Int(ceil(BFloat16(-1.2)))
+end
+
+@testset "Nextfloat prevfloat" begin
+    o = one(BFloat16)
+    @test o == nextfloat(prevfloat(o))
+    @test o == prevfloat(nextfloat(o))
+end
+
+@testset "Absolute values" begin
+    @test abs(BFloat16(-10)) == BFloat16(10)
+    @test abs(BFloat16(-0)) == BFloat16(0)
+    @test abs(BFloat16(1)) == BFloat16(1)
+end
+
+@testset "Conversion float" begin
+    fs = [1.0,2.5,10.0,0.0,-0.25,-5.0]
+
+    for f in fs
+        @test f == Float64(BFloat16(f))
+        @test Float32(f) == Float32(BFloat16(f))
+        @test Float16(f) == Float16(BFloat16(f))
     end
 end
 
-@testset "1+eps/2 is round 50/50 up/down" begin
+@testset "Conversion int" begin
+    fs = [-5,-1,0,-0,1,2]
 
-    p1 = 0
-    p2 = 0
-
-    eps = 0.0078125f0
-    x = 1 + eps/2
-
-    for i = 1:N
-        f = Float32(BFloat16_stochastic_round(x))
-        if 1.0f0 == f
-            p1 += 1
-        elseif 1 + eps == f
-            p2 += 1
-        end
-    end
-
-    @test p1+p2 == N
-    @test p1/N > 0.45
-    @test p1/N < 0.55
-end
-
-@testset "1+eps/4 is round 25% up" begin
-
-    p1 = 0
-    p2 = 0
-
-    eps = 0.0078125f0
-    x = 1 + eps/4
-
-    for i = 1:N
-        f = Float32(BFloat16_stochastic_round(x))
-        if 1.0f0 == f
-            p1 += 1
-        elseif 1 + eps == f
-            p2 += 1
-        end
-    end
-
-    @test p1+p2 == N
-    @test p1/N > 0.70
-    @test p1/N < 0.80
-end
-
-@testset "2+eps/4 is round 25% up" begin
-
-    p1 = 0
-    p2 = 0
-
-    eps = 0.0078125f0
-    x = 2 + eps/2
-
-    for i = 1:N
-        f = Float32(BFloat16_stochastic_round(x))
-        if 2.0f0 == f
-            p1 += 1
-        elseif 2 + 2eps == f
-            p2 += 1
-        end
-    end
-
-    @test p1+p2 == N
-    @test p1/N > 0.70
-    @test p1/N < 0.80
-end
-
-@testset "powers of 2 are not round" begin
-
-    p1 = 0
-    p2 = 0
-
-    for x in Float32[2,4,8,16,32,64,128,256,512,1024]
-        for i = 1:100
-            @test x == Float32(BFloat16_stochastic_round(x))
-            @test x == Float32(BFloat16(x))
-        end
-    end
-
-    for x in Float32[1/2,1/4,1/8,1/16,1/32,1/64,1/128,1/256,1/512,1/1024]
-        for i = 1:100
-            @test x == Float32(BFloat16_stochastic_round(x))
-            @test x == Float32(BFloat16(x))
-        end
+    for f in fs
+        @test f == Int64(BFloat16(f))
+        @test Int32(f) == Int32(BFloat16(f))
+        @test Int16(f) == Int16(BFloat16(f))
     end
 end
 
-@testset "1+eps+eps/8 is round 12.5% up" begin
+@testset "Addition and subtraction" begin
 
-    p1 = 0
-    p2 = 0
-    N = 1000000
-
-    eps = 0.0078125f0
-    x = 1 + eps + eps/8
-
-    for i = 1:N
-        f = Float32(BFloat16_stochastic_round(x))
-        if 1.0f0 + eps == f
-            p1 += 1
-        elseif 1 + 2eps == f
-            p2 += 1
-        end
-    end
-    println((p1/N,p2/N))
-    @test p1+p2 == N
-    @test p1/N > 0.85
-    @test p1/N < 0.90
+    @test BFloat16(2) == BFloat16(1)+BFloat16(1)
+    @test BFloat16(1) == BFloat16(1)+BFloat16(0)
+    @test BFloat16(-1) == BFloat16(1)+BFloat16(-2)
+    @test BFloat16(1.5) == BFloat16(1)+BFloat16(0.5)
+    @test BFloat16(1.5) == BFloat16(2)-BFloat16(0.5)
+    @test BFloat16(0) == BFloat16(1.2345)-BFloat16(1.2345)
+    @test BFloat16(-1.5) == BFloat16(2.5)-BFloat16(4.0)
 end
 
-@testset "1+eps/8 is round 12.5% up" begin
+@testset "Multiplication" begin
 
-    p1 = 0
-    p2 = 0
-    N = 1000000
-
-    eps = 0.0078125f0
-    x = 1 + eps/8
-
-    for i = 1:N
-        f = Float32(BFloat16_stochastic_round(x))
-        if 1.0f0 == f
-            p1 += 1
-        elseif 1 + eps == f
-            p2 += 1
-        end
-    end
-    println((p1/N,p2/N))
-    @test p1+p2 == N
-    @test p1/N > 0.85
-    @test p1/N < 0.90
+    @test BFloat16(2) == BFloat16(2)*BFloat16(1)
+    @test BFloat16(0) == BFloat16(1)*BFloat16(0)
+    @test BFloat16(-2) == BFloat16(1)*BFloat16(-2)
+    @test BFloat16(0.25) == BFloat16(0.5)*BFloat16(0.5)
+    @test BFloat16(1.5) == BFloat16(3)*BFloat16(0.5)
+    @test BFloat16(12.5) == BFloat16(1.25)*BFloat16(10.0)
+    @test BFloat16(-12) == BFloat16(-10)*BFloat16(1.2)
+    @test InfB16 == -InfB16*-InfB16
 end
 
-@testset "1+eps/16 is round 6.25% up" begin
+@testset "Division" begin
 
-    p1 = 0
-    p2 = 0
-    N = 1000000
-
-    eps = 0.0078125f0
-    x = 1 + eps/16
-
-    for i = 1:N
-        f = Float32(BFloat16_stochastic_round(x))
-        if 1.0f0 == f
-            p1 += 1
-        elseif 1 + eps == f
-            p2 += 1
-        end
-    end
-    println((p1/N,p2/N))
-    @test p1+p2 == N
-    @test p2/N > 0.055
-    @test p2/N < 0.07
+    @test BFloat16(2) == BFloat16(2)/BFloat16(1)
+    @test BFloat16(0) == BFloat16(0)/BFloat16(1)
+    @test BFloat16(-0.5) == BFloat16(1)/BFloat16(-2)
+    @test BFloat16(1) == BFloat16(0.5)/BFloat16(0.5)
+    @test BFloat16(1.5) == BFloat16(3)/BFloat16(2)
+    @test BFloat16(-12.5) == BFloat16(-25)/BFloat16(2)
+    @test InfB16 == BFloat16(1)/BFloat16(0)
+    @test -InfB16 == BFloat16(-1)/BFloat16(0)
 end
 
-@testset "2+eps/16 is round 6.25% up" begin
-
-    p1 = 0
-    p2 = 0
-    N = 1000000
-
-    eps = 0.0078125f0
-    x = 2 + eps/8
-
-    for i = 1:N
-        f = Float32(BFloat16_stochastic_round(x))
-        if 2.0f0 == f
-            p1 += 1
-        elseif 2 + 2eps == f
-            p2 += 1
-        end
-    end
-    println((p1/N,p2/N))
-    @test p1+p2 == N
-    @test p2/N > 0.055
-    @test p2/N < 0.07
+@testset "Power" begin
+    @test BFloat16(2) ^ BFloat16(4) == BFloat16(16)
+    @test BFloat16(4) ^ BFloat16(-2) == BFloat16(1/16)
 end
 
-@testset "Subnormals are deterministically round" begin
-
-    for hex in 0x1:0x80     # 0x80 == 0x1 << 7  # test for all subnormals of BFloat16
-
-        x = reinterpret(Float32,UInt32(hex) << 16)
-
-        for i = 1:10
-            @test x == Float32(BFloat16(x))
-            @test x == Float32(BFloat16sr(x))
-            @test x == Float32(BFloat16_stochastic_round(x))
-        end
-    end
+@testset "Sqrt" begin
+    @test sqrt(BFloat16(4f0)) == BFloat16(2f0)
+    @test sqrt(BFloat16(1f0)) == BFloat16(1f0)
+    @test sqrt(BFloat16(0.25)) == BFloat16(0.5)
 end
-
-
-
-
-@test abs(BFloat16(-10)) == BFloat16(10)
-@test Float32(BFloat16(10)) == 1f1
-@test Float64(BFloat16(10)) == 10.0
-@test BFloat16(2) ^ BFloat16(4) == BFloat16(16)
-@test sqrt(BFloat16(4f0)) == BFloat16(2f0)
