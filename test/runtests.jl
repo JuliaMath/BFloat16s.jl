@@ -16,6 +16,8 @@ using Test, BFloat16s, Printf
 	@test BFloat16(2)   != BFloat16(1)
 	@test BFloat16(2f0) != BFloat16(1f0)
 	@test BFloat16(2.0) != BFloat16(1.0)
+  @test iszero(BFloat16(0)) == true
+  @test iszero(BFloat16(3.45)) == false
 end
 
 @testset "conversions" begin
@@ -43,12 +45,6 @@ end
   @test zero(BFloat16) == BFloat16(0.0f0)
   @test one(BFloat16) == BFloat16(1.0)
 end
-
-@test abs(BFloat16(-10)) == BFloat16(10)
-@test Float32(BFloat16(10)) == 1f1
-@test Float64(BFloat16(10)) == 10.0
-@test BFloat16(2) ^ BFloat16(4) == BFloat16(16)
-@test sqrt(BFloat16(4f0)) == BFloat16(2f0)
 
 @testset "printf" begin
   for (fmt, val) in (("%7.2f", "   1.23"),
@@ -82,3 +78,4 @@ end
   @test( @sprintf( "%010.5g", BFloat16(-123.5) ) == "-0000123.5")
   @test (@sprintf "%a" BFloat16(1.5)) == "0x1.8p+0"
 end
+

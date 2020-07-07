@@ -13,7 +13,7 @@ for f in (:sign_mask, :exponent_mask, :exponent_one,
     @eval $(f)(::Type{BFloat16}) = UInt16($(f)(Float32) >> 16)
 end
 
-iszero(x::BFloat16) = reinterpret(BFloat16, x) & ~sign_mask(BFloat16) == 0x0000
+iszero(x::BFloat16) = reinterpret(UInt16, x) & ~sign_mask(BFloat16) == 0x0000
 isfinite(x::BFloat16) = (reinterpret(UInt16,x) & exponent_mask(BFloat16)) != exponent_mask(BFloat16)
 isnan(x::BFloat16) = (reinterpret(UInt16,x) & ~sign_mask(BFloat16)) > exponent_mask(BFloat16)
 precision(::Type{BFloat16}) = 8
