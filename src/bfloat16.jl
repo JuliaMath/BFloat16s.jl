@@ -1,7 +1,9 @@
-import Base: isfinite, isnan, precision, iszero,
+import Base: isfinite, isnan, precision, iszero, eps,
     sign_mask, exponent_mask, exponent_one, exponent_half,
-    significand_mask,
-    +, -, *, /, ^, inv
+    significand_mask, round, Int32, Int64,
+    +, -, *, /, ^, ==, <, <=, >=, >, !=, inv,
+    abs, sqrt, exp, log, log2, log10, sin, cos, tan, asin,
+    acos, atan, sinh, cosh, tanh, asinh, acosh, atan
 
 primitive type BFloat16 <: AbstractFloat 16 end
 
@@ -15,6 +17,14 @@ iszero(x::BFloat16) = reinterpret(BFloat16, x) & ~sign_mask(BFloat16) == 0x0000
 isfinite(x::BFloat16) = (reinterpret(UInt16,x) & exponent_mask(BFloat16)) != exponent_mask(BFloat16)
 isnan(x::BFloat16) = (reinterpret(UInt16,x) & ~sign_mask(BFloat16)) > exponent_mask(BFloat16)
 precision(::Type{BFloat16}) = 8
+eps(::Type{BFloat16}) = Base.bitcast(BFloat16, 0x3c00)
+
+round(x::BFloat16, r::RoundingMode{:Up}) = BFloat16(ceil(Float32(x)))
+round(x::BFloat16, r::RoundingMode{:Down}) = BFloat16(floor(Float32(x)))
+round(x::BFloat16, r::RoundingMode{:Nearest}) = BFloat16(round(Float32(x)))
+
+Int64(x::BFloat16) = Int64(Float32(x))
+Int32(x::BFloat16) = Int32(Float32(x))
 
 ## floating point traits ##
 """
@@ -73,8 +83,14 @@ for f in (:+, :-, :*, :/, :^)
     @eval ($f)(x::BFloat16, y::BFloat16) = BFloat16($(f)(Float32(x), Float32(y)))
 end
 -(x::BFloat16) = reinterpret(BFloat16, reinterpret(UInt16, x) ⊻ sign_mask(BFloat16))
-abs(x::BFloat16) = reinterpret(BFloat16, reinterpret(UInt16, x) & 0x7fff)
-Base.sqrt(x::BFloat16) = BFloat16(sqrt(Float32(x)))
+
+for F in (:abs, :sqrt, :exp, :log, :log2, :log10,
+          :sin, :cos, :tan, :asin, :acos, :atan,
+          :sinh, :cosh, :tanh, :asinh, :acosh, :atanh)
+  @eval begin
+    $F(x::BFloat16) = BFloat16($F(Float32(x)))
+  end
+end
 
 const ZeroBFloat16 = BFloat16(0.0f0)
 const OneBFloat16 = BFloat16(1.0f0)
@@ -84,7 +100,7 @@ Base.one(::Type{BFloat16}) = OneBFloat16
 inv(x::BFloat16) = one(BFloat16) / x
 
 # Floating point comparison
-function Base.:(==)(x::BFloat16, y::BFloat16)
+function ==(x::BFloat16, y::BFloat16)
     ix = reinterpret(UInt16, x)
     iy = reinterpret(UInt16, y)
     # NaNs (isnan(x) || isnan(y))
@@ -98,20 +114,8 @@ function Base.:(==)(x::BFloat16, y::BFloat16)
     return ix == iy
 end
 
-function Base.:(<)(x::BFloat16, y::BFloat16)
-	return Float32(x) < Float32(y)
-end
-
-function Base.:(<=)(x::BFloat16, y::BFloat16)
-	return Float32(x) <= Float32(y)
-end
-
-function Base.:(>)(x::BFloat16, y::BFloat16)
-	return Float32(x) > Float32(y)
-end
-
-function Base.:(>=)(x::BFloat16, y::BFloat16)
-	return Float32(x) >= Float32(y)
+for op in (:<, :<=, :>, :>=, :!=)
+    @eval ($op)(a::BFloat16, b::BFloat16) = ($op)(Float32(a), Float32(b))
 end
 
 Base.widen(::Type{BFloat16}) = Float32
