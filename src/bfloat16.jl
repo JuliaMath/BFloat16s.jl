@@ -142,9 +142,9 @@ function Base.show(io::IO, x::BFloat16)
     end
 end
 
-bitstring(x::BFloat16) = bitstring(reinterpret(UInt16,x))
+Base.bitstring(x::BFloat16) = bitstring(reinterpret(UInt16,x))
 
-function bitstring(x::BFloat16,mode::Symbol)
+function Base.bitstring(x::BFloat16,mode::Symbol)
     if mode == :split	# split into sign, exponent, signficand
         s = bitstring(x)
 		return "$(s[1]) $(s[2:9]) $(s[10:end])"
@@ -153,7 +153,7 @@ function bitstring(x::BFloat16,mode::Symbol)
     end
 end
 
-function nextfloat(x::BFloat16)
+function Base.nextfloat(x::BFloat16)
     if isfinite(x)
 		ui = reinterpret(UInt16,x)
 		if ui < 0x8000	# positive numbers
@@ -168,7 +168,7 @@ function nextfloat(x::BFloat16)
 	end
 end
 
-function prevfloat(x::BFloat16)
+function Base.prevfloat(x::BFloat16)
     if isfinite(x)
 		ui = reinterpret(UInt16,x)
 		if ui == 0x0000		# =zero(T)
