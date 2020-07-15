@@ -141,3 +141,44 @@ function Base.show(io::IO, x::BFloat16)
         hastypeinfo || print(io, ")")
     end
 end
+
+bitstring(x::BFloat16) = bitstring(reinterpret(UInt16,x))
+
+function bitstring(x::BFloat16,mode::Symbol)
+    if mode == :split	# split into sign, exponent, signficand
+        s = bitstring(x)
+		return "$(s[1]) $(s[2:9]) $(s[10:end])"
+    else
+        return bitstring(x)
+    end
+end
+
+function nextfloat(x::BFloat16)
+    if isfinite(x)
+		ui = reinterpret(UInt16,x)
+		if ui < 0x8000	# positive numbers
+			return reinterpret(BFloat16,ui+0x0001)
+		elseif ui == 0x8000		# =-zero(T)
+			return reinterpret(BFloat16,0x0001)
+		else				# negative numbers
+			return reinterpret(BFloat16,ui-0x0001)
+		end
+	else	# NaN / Inf case
+		return x
+	end
+end
+
+function prevfloat(x::BFloat16)
+    if isfinite(x)
+		ui = reinterpret(UInt16,x)
+		if ui == 0x0000		# =zero(T)
+			return reinterpret(BFloat16,0x8001)
+		elseif ui < 0x8000	# positive numbers
+			return reinterpret(BFloat16,ui-0x0001)
+		else				# negative numbers
+			return reinterpret(BFloat16,ui+0x0001)
+		end
+	else	# NaN / Inf case
+		return x
+	end
+end
