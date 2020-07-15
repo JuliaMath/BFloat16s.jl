@@ -75,6 +75,9 @@ function Base.Float64(x::BFloat16)
     Float64(Float32(x))
 end
 
+Base.Float16(x::BFloat16) = Float16(Float32(x))
+BFloat16(x::Float16) = BFloat16(Float32(x))
+
 # Truncation to integer types
 Base.unsafe_trunc(T::Type{<:Integer}, x::BFloat16) = unsafe_trunc(T, Float32(x))
 
