@@ -120,7 +120,6 @@ end
     for f in fs
         @test f == Int64(BFloat16(f))
         @test Int32(f) == Int32(BFloat16(f))
-        @test Int16(f) == Int16(BFloat16(f))
     end
 end
 
