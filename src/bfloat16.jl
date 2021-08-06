@@ -141,3 +141,9 @@ function Base.show(io::IO, x::BFloat16)
         hastypeinfo || print(io, ")")
     end
 end
+
+# Random
+import Random: rand, randn, randexp, AbstractRNG, Sampler
+rand(rng::AbstractRNG, ::Sampler{BFloat16}) = convert(BFloat16, rand(rng))
+randn(rng::AbstractRNG, ::Type{BFloat16}) = convert(BFloat16, randn(rng))
+randexp(rng::AbstractRNG, ::Type{BFloat16}) = convert(BFloat16, randexp(rng))

@@ -1,4 +1,4 @@
-using Test, BFloat16s, Printf
+using Test, BFloat16s, Printf, Random
 
 @testset "comparisons" begin
 	@test BFloat16(1)   <  BFloat16(2)
@@ -79,3 +79,30 @@ end
   @test (@sprintf "%a" BFloat16(1.5)) == "0x1.8p+0"
 end
 
+@testset "random" begin
+  x = Array{BFloat16}(undef, 10)
+  y = Array{BFloat16}(undef, 10)
+  rand!(x)
+  rand!(y)
+  @test x !== y
+
+  randn!(x)
+  randn!(y)
+  @test x !== y
+
+  randexp!(x)
+  randexp!(y)
+  @test x !== y
+
+  x = rand(BFloat16, 10)
+  y = rand(BFloat16, 10)
+  @test x !== y
+
+  x = randn(BFloat16, 10)
+  y = randn(BFloat16, 10)
+  @test x !== y
+
+  x = randexp(BFloat16, 10)
+  y = randexp(BFloat16, 10)
+  @test x !== y
+end
