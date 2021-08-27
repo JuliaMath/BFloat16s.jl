@@ -1,4 +1,5 @@
 import Base: isfinite, isnan, precision, iszero, eps,
+    typemin, typemax, floatmin, floatmax,
     sign_mask, exponent_mask, exponent_one, exponent_half,
     significand_mask, round, Int32, Int64,
     +, -, *, /, ^, ==, <, <=, >=, >, !=, inv,
@@ -38,6 +39,13 @@ const InfB16 = reinterpret(BFloat16, 0x7f80)
 A not-a-number value of type [`BFloat16`](@ref).
 """
 const NaNB16 = reinterpret(BFloat16, 0x7fc0)
+
+# More floating point property queries
+typemin(::Type{BFloat16}) = -InfB16
+typemax(::Type{BFloat16}) = InfB16
+floatmax(::Type{BFloat16}) = reinterpret(BFloat16, 0x7f7f)
+floatmin(::Type{BFloat16}) = reinterpret(BFloat16, 0x0080)
+
 
 # Truncation from Float32
 Base.uinttype(::Type{BFloat16}) = UInt16
