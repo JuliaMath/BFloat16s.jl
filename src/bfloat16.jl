@@ -4,7 +4,8 @@ import Base: isfinite, isnan, precision, iszero, eps,
     significand_mask, round, Int32, Int64,
     +, -, *, /, ^, ==, <, <=, >=, >, !=, inv,
     abs, sqrt, exp, log, log2, log10, sin, cos, tan, asin,
-    acos, atan, sinh, cosh, tanh, asinh, acosh, atan
+    acos, atan, sinh, cosh, tanh, asinh, acosh, atan,
+    exponent
 
 primitive type BFloat16 <: AbstractFloat 16 end
 
@@ -91,6 +92,7 @@ for f in (:+, :-, :*, :/, :^)
     @eval ($f)(x::BFloat16, y::BFloat16) = BFloat16($(f)(Float32(x), Float32(y)))
 end
 -(x::BFloat16) = reinterpret(BFloat16, reinterpret(UInt16, x) ⊻ sign_mask(BFloat16))
+^(x::BFloat16, y::Integer) = BFloat16(^(Float32(x), y))
 
 for F in (:abs, :sqrt, :exp, :log, :log2, :log10,
           :sin, :cos, :tan, :asin, :acos, :atan,
@@ -149,3 +151,6 @@ function Base.show(io::IO, x::BFloat16)
         hastypeinfo || print(io, ")")
     end
 end
+
+# Exponent
+exponent(x::BFloat16) = exponent(Float32(x))
