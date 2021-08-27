@@ -5,7 +5,8 @@ import Base: isfinite, isnan, precision, iszero, eps,
     +, -, *, /, ^, ==, <, <=, >=, >, !=, inv,
     abs, sqrt, exp, log, log2, log10, sin, cos, tan, asin,
     acos, atan, sinh, cosh, tanh, asinh, acosh, atan,
-    exponent
+    exponent,
+    bitstring
 
 primitive type BFloat16 <: AbstractFloat 16 end
 
@@ -154,3 +155,6 @@ end
 
 # Exponent
 exponent(x::BFloat16) = exponent(Float32(x))
+
+# Bitstring
+bitstring(x::BFloat16) = bitstring(reinterpret(UInt16, x))
