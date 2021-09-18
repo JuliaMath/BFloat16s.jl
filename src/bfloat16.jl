@@ -1,9 +1,12 @@
 import Base: isfinite, isnan, precision, iszero, eps,
+    typemin, typemax, floatmin, floatmax,
     sign_mask, exponent_mask, exponent_one, exponent_half,
     significand_mask, round, Int32, Int64,
     +, -, *, /, ^, ==, <, <=, >=, >, !=, inv,
     abs, sqrt, exp, log, log2, log10, sin, cos, tan, asin,
-    acos, atan, sinh, cosh, tanh, asinh, acosh, atan
+    acos, atan, sinh, cosh, tanh, asinh, acosh, atan,
+    exponent,
+    bitstring
 
 primitive type BFloat16 <: AbstractFloat 16 end
 
@@ -38,6 +41,13 @@ const InfB16 = reinterpret(BFloat16, 0x7f80)
 A not-a-number value of type [`BFloat16`](@ref).
 """
 const NaNB16 = reinterpret(BFloat16, 0x7fc0)
+
+# More floating point property queries
+typemin(::Type{BFloat16}) = -InfB16
+typemax(::Type{BFloat16}) = InfB16
+floatmax(::Type{BFloat16}) = reinterpret(BFloat16, 0x7f7f)
+floatmin(::Type{BFloat16}) = reinterpret(BFloat16, 0x0080)
+
 
 # Truncation from Float32
 Base.uinttype(::Type{BFloat16}) = UInt16
@@ -83,6 +93,7 @@ for f in (:+, :-, :*, :/, :^)
     @eval ($f)(x::BFloat16, y::BFloat16) = BFloat16($(f)(Float32(x), Float32(y)))
 end
 -(x::BFloat16) = reinterpret(BFloat16, reinterpret(UInt16, x) ⊻ sign_mask(BFloat16))
+^(x::BFloat16, y::Integer) = BFloat16(^(Float32(x), y))
 
 for F in (:abs, :sqrt, :exp, :log, :log2, :log10,
           :sin, :cos, :tan, :asin, :acos, :atan,
@@ -147,3 +158,9 @@ import Random: rand, randn, randexp, AbstractRNG, Sampler
 rand(rng::AbstractRNG, ::Sampler{BFloat16}) = convert(BFloat16, rand(rng))
 randn(rng::AbstractRNG, ::Type{BFloat16}) = convert(BFloat16, randn(rng))
 randexp(rng::AbstractRNG, ::Type{BFloat16}) = convert(BFloat16, randexp(rng))
+          
+# Exponent
+exponent(x::BFloat16) = exponent(Float32(x))
+
+# Bitstring
+bitstring(x::BFloat16) = bitstring(reinterpret(UInt16, x))

@@ -44,6 +44,7 @@ end
   @test inv(BFloat16(5.0)) == BFloat16(0.2)
   @test zero(BFloat16) == BFloat16(0.0f0)
   @test one(BFloat16) == BFloat16(1.0)
+  @test BFloat16(2.0) ^ -2 == BFloat16(0.25)
 end
 
 @testset "printf" begin
