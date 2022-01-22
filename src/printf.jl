@@ -12,6 +12,8 @@ else
   ini_dec(out, d::BFloat16, ndigits::Int, flags::String, width::Int, precision::Int, c::Char, digits) = ini_dec(out, Float32(d), ndigits, flags, width, precision, c, digits)
   
   if VERSION < v"1.6"
+    import Printf: ini_hex, ini_HEX
+    
     ini_hex(out, d::BFloat16, ndigits::Int, flags::String, width::Int, precision::Int, c::Char, digits) = ini_hex(out, Float32(d), ndigits, flags, width, precision, c, digits)
     ini_HEX(out, d::BFloat16, ndigits::Int, flags::String, width::Int, precision::Int, c::Char, digits) = ini_HEX(out, Float32(d), ndigits, flags, width, precision, c, digits)
     ini_hex(out, d::BFloat16,               flags::String, width::Int, precision::Int, c::Char, digits) = ini_hex(out, Float32(d),          flags, width, precision, c, digits)
