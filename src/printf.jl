@@ -1,6 +1,8 @@
 import Printf: ini_dec, fix_dec
 
 if VERSION < v"1.1"
+  import Printf: ini_hex, ini_HEX
+  
   fix_dec(out, d::BFloat16,               flags::String, width::Int, precision::Int, c::Char) = fix_dec(out, Float32(d),          flags, width, precision, c)
   ini_dec(out, d::BFloat16, ndigits::Int, flags::String, width::Int, precision::Int, c::Char) = ini_dec(out, Float32(d), ndigits, flags, width, precision, c)
   ini_hex(out, d::BFloat16, ndigits::Int, flags::String, width::Int, precision::Int, c::Char) = ini_hex(out, Float32(d), ndigits, flags, width, precision, c)
