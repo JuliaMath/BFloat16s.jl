@@ -164,3 +164,34 @@ exponent(x::BFloat16) = exponent(Float32(x))
 
 # Bitstring
 bitstring(x::BFloat16) = bitstring(reinterpret(UInt16, x))
+
+# next/prevfloat
+function Base.nextfloat(x::BFloat16)
+    if isfinite(x)
+		ui = reinterpret(UInt16,x)
+		if ui < 0x8000	# positive numbers
+			return reinterpret(BFloat16,ui+0x0001)
+		elseif ui == 0x8000		# =-zero(T)
+			return reinterpret(BFloat16,0x0001)
+		else				# negative numbers
+			return reinterpret(BFloat16,ui-0x0001)
+		end
+	else	# NaN / Inf case
+		return x
+	end
+end
+
+function Base.prevfloat(x::BFloat16)
+    if isfinite(x)
+		ui = reinterpret(UInt16,x)
+		if ui == 0x0000		# =zero(T)
+			return reinterpret(BFloat16,0x8001)
+		elseif ui < 0x8000	# positive numbers
+			return reinterpret(BFloat16,ui-0x0001)
+		else				# negative numbers
+			return reinterpret(BFloat16,ui+0x0001)
+		end
+	else	# NaN / Inf case
+		return x
+	end
+end
