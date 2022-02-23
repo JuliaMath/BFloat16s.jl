@@ -120,9 +120,9 @@ end
     @test x > prevfloat(x)
   end
 
-  @test BFloat16s.NaNB16 == nextfloat(BFloat16s.NaNB16)
-  @test BFloat16s.InfB16 == nextfloat(BFloat16s.InfB16)
+  @test isnan(nextfloat(BFloat16s.NaNB16))
+  @test isinf(nextfloat(BFloat16s.InfB16))
 
-  @test BFloat16s.NaNB16 == prevfloat(BFloat16s.NaNB16)
-  @test BFloat16s.InfB16 == prevfloat(BFloat16s.InfB16)
+  @test isnan(prevfloat(BFloat16s.NaNB16))
+  @test isinf(prevfloat(BFloat16s.InfB16))
 end
