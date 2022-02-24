@@ -107,3 +107,7 @@ end
   y = randexp(BFloat16, 10)
   @test x !== y
 end
+
+@testset "round" begin
+  @test round(Int, BFloat16(3.4)) == 3
+end

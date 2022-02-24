@@ -87,6 +87,7 @@ end
 
 # Truncation to integer types
 Base.unsafe_trunc(T::Type{<:Integer}, x::BFloat16) = unsafe_trunc(T, Float32(x))
+Base.trunc(::Type{T}, x::BFloat16) where {T<:Integer} = trunc(T, Float32(x))
 
 # Basic arithmetic
 for f in (:+, :-, :*, :/, :^)
