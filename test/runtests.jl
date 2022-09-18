@@ -108,6 +108,10 @@ end
   @test x !== y
 end
 
+@testset "round" begin
+  @test round(Int, BFloat16(3.4)) == 3
+end
+
 @testset "Next/prevfloat" begin
 
   for x in (one(BFloat16),
