@@ -98,9 +98,9 @@ end
 for F in (:abs, :sqrt, :exp, :log, :log2, :log10,
           :sin, :cos, :tan, :asin, :acos, :atan,
           :sinh, :cosh, :tanh, :asinh, :acosh, :atanh)
-  @eval begin
-    $F(x::BFloat16) = BFloat16($F(Float32(x)))
-  end
+    @eval begin
+        $F(x::BFloat16) = BFloat16($F(Float32(x)))
+    end
 end
 
 const ZeroBFloat16 = BFloat16(0.0f0)
