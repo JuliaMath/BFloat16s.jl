@@ -107,3 +107,22 @@ end
   y = randexp(BFloat16, 10)
   @test x !== y
 end
+
+@testset "Next/prevfloat" begin
+
+  for x in (one(BFloat16),
+            -one(BFloat16),
+            zero(BFloat16))
+    @test x == nextfloat(prevfloat(x))
+    @test x == prevfloat(nextfloat(x))
+
+    @test x < nextfloat(x)
+    @test x > prevfloat(x)
+  end
+
+  @test isnan(nextfloat(BFloat16s.NaNB16))
+  @test isinf(nextfloat(BFloat16s.InfB16))
+
+  @test isnan(prevfloat(BFloat16s.NaNB16))
+  @test isinf(prevfloat(BFloat16s.InfB16))
+end
