@@ -87,6 +87,7 @@ end
 
 # Truncation to integer types
 Base.unsafe_trunc(T::Type{<:Integer}, x::BFloat16) = unsafe_trunc(T, Float32(x))
+Base.trunc(::Type{T}, x::BFloat16) where {T<:Integer} = trunc(T, Float32(x))
 
 # Basic arithmetic
 for f in (:+, :-, :*, :/, :^)
@@ -98,9 +99,9 @@ end
 for F in (:abs, :sqrt, :exp, :log, :log2, :log10,
           :sin, :cos, :tan, :asin, :acos, :atan,
           :sinh, :cosh, :tanh, :asinh, :acosh, :atanh)
-  @eval begin
-    $F(x::BFloat16) = BFloat16($F(Float32(x)))
-  end
+    @eval begin
+        $F(x::BFloat16) = BFloat16($F(Float32(x)))
+    end
 end
 
 const ZeroBFloat16 = BFloat16(0.0f0)
@@ -164,3 +165,34 @@ exponent(x::BFloat16) = exponent(Float32(x))
 
 # Bitstring
 bitstring(x::BFloat16) = bitstring(reinterpret(UInt16, x))
+
+# next/prevfloat
+function Base.nextfloat(x::BFloat16)
+    if isfinite(x)
+		ui = reinterpret(UInt16,x)
+		if ui < 0x8000	# positive numbers
+			return reinterpret(BFloat16,ui+0x0001)
+		elseif ui == 0x8000		# =-zero(T)
+			return reinterpret(BFloat16,0x0001)
+		else				# negative numbers
+			return reinterpret(BFloat16,ui-0x0001)
+		end
+	else	# NaN / Inf case
+		return x
+	end
+end
+
+function Base.prevfloat(x::BFloat16)
+    if isfinite(x)
+		ui = reinterpret(UInt16,x)
+		if ui == 0x0000		# =zero(T)
+			return reinterpret(BFloat16,0x8001)
+		elseif ui < 0x8000	# positive numbers
+			return reinterpret(BFloat16,ui-0x0001)
+		else				# negative numbers
+			return reinterpret(BFloat16,ui+0x0001)
+		end
+	else	# NaN / Inf case
+		return x
+	end
+end
