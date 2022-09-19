@@ -1,11 +1,5 @@
-half = BFloat16(0.5f0)
-whole = BFloat16(1.0f0)
-two = BFloat16(2.0f0)
-
 phi = BFloat16(0.0f0 + Base.Math.MathConstants.golden)
 invphi = BFloat16(1.0f0 / Base.Math.MathConstants.golden)
-phi3 = phi * phi * phi
-invphi3 = invphi * invphi * invphi
 
 for F in  (:abs, :abs2, :sqrt, :cbrt,
           :exp, :exp2, :exp10, :expm1,
