@@ -7,7 +7,7 @@ import Base: isfinite, isnan, precision, iszero, eps,
     round, Int16, Int32, Int64,
     +, -, *, /, ^, ==, <, <=, >=, >, !=, inv,
     abs, sqrt, exp, log, log2, log10, sin, cos, tan, asin,
-    acos, atan, sinh, cosh, tanh, asinh, acosh, atan,
+    acos, atan, sinh, cosh, tanh, asinh, acosh, atanh,
     bitstring
 
 primitive type BFloat16 <: AbstractFloat 16 end
