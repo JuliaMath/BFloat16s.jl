@@ -26,6 +26,8 @@ round(x::BFloat16, r::RoundingMode{:Up}) = BFloat16(ceil(Float32(x)))
 round(x::BFloat16, r::RoundingMode{:Down}) = BFloat16(floor(Float32(x)))
 round(x::BFloat16, r::RoundingMode{:Nearest}) = BFloat16(round(Float32(x)))
 
+Base.trunc(bf::BFloat16) = signbit(bf) ? ceil(bf) : floor(bf) 
+
 Int64(x::BFloat16) = Int64(Float32(x))
 Int32(x::BFloat16) = Int32(Float32(x))
 
