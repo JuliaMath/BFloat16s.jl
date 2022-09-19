@@ -17,7 +17,7 @@ end
 
 @testset "BFloat16 parts" begin
   @test exponent(whole) == 0
-  @test significand(whole) == zero(BFloat16)
+  @test significand(whole) == one(BFloat16)
   
   @test frexp(phi) == (BFloat16(0.80859375), 1)
   @test ldexp(BFloat16(0.80859375), 1) == phi
