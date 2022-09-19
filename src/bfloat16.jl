@@ -6,8 +6,13 @@ import Base: isfinite, isnan, precision, iszero, eps,
     signbit, exponent, significand, frexp, ldexp,
     round, Int16, Int32, Int64,
     +, -, *, /, ^, ==, <, <=, >=, >, !=, inv,
-    abs, sqrt, exp, log, log2, log10, sin, cos, tan, asin,
-    acos, atan, sinh, cosh, tanh, asinh, acosh, atanh,
+    abs, abs2, sqrt, cbrt, 
+    exp, exp2, exp10, expm1,
+    log, log2, log10, log1p,
+    sin, cos, tan, csc, sec, cot,
+    asin, acos, atan, acsc, asec, acot,
+    sinh, cosh, tanh, csch, sech, coth,
+    asinh, acosh, atanh, acsch, asech, acoth,
     bitstring
 
 primitive type BFloat16 <: AbstractFloat 16 end
@@ -243,3 +248,17 @@ function Base.prevfloat(x::BFloat16)
         return x
     end
 end
+
+# math functions
+for F in (:abs, :abs2, :sqrt, :cbrt, :
+          :exp, :exp2, :exp10, :expm1,
+          :log, :log2, :log10, :log1p,
+          :sin, :cos, :tan, :csc, :sec, :cot,
+          :asin, :acos, :atan, :acsc, :asec, :acot,
+          :sinh, :cosh, :tanh, :csch, :sech, :coth,
+          :asinh, :acosh, :atanh, :acsch, :asech, :acoth)
+  @eval begin
+     $F(x::BFloat16) = BFloat16($F(Float32(x)))
+  end
+end
+
