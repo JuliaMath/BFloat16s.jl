@@ -1,11 +1,18 @@
 import Base: isfinite, isnan, precision, iszero, eps,
     typemin, typemax, floatmin, floatmax,
-    sign_mask, exponent_mask, exponent_one, exponent_half,
-    significand_mask, round, Int32, Int64,
+    sign_mask, exponent_mask, significand_mask,
+    exponent_bits, significand_bits, exponent_bias,
+    exponent_one, exponent_half,
+    signbit, exponent, significand, frexp, ldexp,
+    round, Int16, Int32, Int64,
     +, -, *, /, ^, ==, <, <=, >=, >, !=, inv,
-    abs, sqrt, exp, log, log2, log10, sin, cos, tan, asin,
-    acos, atan, sinh, cosh, tanh, asinh, acosh, atan,
-    exponent,
+    abs, abs2, sqrt, cbrt, 
+    exp, exp2, exp10, expm1,
+    log, log2, log10, log1p,
+    sin, cos, tan, csc, sec, cot,
+    asin, acos, atan, acsc, asec, acot,
+    sinh, cosh, tanh, csch, sech, coth,
+    asinh, acosh, atanh, acsch, asech, acoth,
     bitstring
 
 primitive type BFloat16 <: AbstractFloat 16 end
@@ -14,6 +21,39 @@ primitive type BFloat16 <: AbstractFloat 16 end
 for f in (:sign_mask, :exponent_mask, :exponent_one,
             :exponent_half, :significand_mask)
     @eval $(f)(::Type{BFloat16}) = UInt16($(f)(Float32) >> 16)
+end
+
+Base.exponent_bias(::Type{BFloat16}) = 127
+Base.exponent_bits(::Type{BFloat16}) = 8
+Base.significand_bits(::Type{BFloat16}) = 7
+Base.signbit(x::BFloat16) = (reinterpret(UInt16, x) & 0x8000) !== 0x0000
+
+function Base.significand(x::BFloat16)
+    result = abs_significand(x)
+    ifelse(signbit(x), -result, result)
+end
+
+@inline function abs_significand(x::BFloat16)
+    usig = Base.significand_mask(BFloat16) & reinterpret(UInt16, x)
+    isig = Int16(usig)
+    1 + isig / BFloat16(2)^7
+end
+
+Base.exponent(x::BFloat16) = 
+    ((reinterpret(UInt16, x) & Base.exponent_mask(BFloat16)) >> 7) - Base.exponent_bias(BFloat16)
+
+function Base.frexp(x::BFloat16)
+   xp = exponent(x) + 1
+   fr = significand(x) * BFloat16(0.5)
+   (fr, xp)
+end
+
+function Base.ldexp(fr::BFloat16, xp::Integer)
+   fr * BFloat16(2)^(xp)
+end
+
+function Base.rem(x::BFloat16, ::Type{T}) where {T<:Integer}
+    T(trunc(x))
 end
 
 iszero(x::BFloat16) = reinterpret(UInt16, x) & ~sign_mask(BFloat16) == 0x0000
@@ -26,8 +66,11 @@ round(x::BFloat16, r::RoundingMode{:Up}) = BFloat16(ceil(Float32(x)))
 round(x::BFloat16, r::RoundingMode{:Down}) = BFloat16(floor(Float32(x)))
 round(x::BFloat16, r::RoundingMode{:Nearest}) = BFloat16(round(Float32(x)))
 
+Base.trunc(bf::BFloat16) = signbit(bf) ? ceil(bf) : floor(bf) 
+
 Int64(x::BFloat16) = Int64(Float32(x))
 Int32(x::BFloat16) = Int32(Float32(x))
+Int16(x::BFloat16) = Int16(Float32(x))
 
 ## floating point traits ##
 """
@@ -48,7 +91,6 @@ typemax(::Type{BFloat16}) = InfB16
 floatmax(::Type{BFloat16}) = reinterpret(BFloat16, 0x7f7f)
 floatmin(::Type{BFloat16}) = reinterpret(BFloat16, 0x0080)
 
-
 # Truncation from Float32
 Base.uinttype(::Type{BFloat16}) = UInt16
 Base.trunc(::Type{BFloat16}, x::Float32) = reinterpret(BFloat16,
@@ -67,12 +109,22 @@ end
 
 # Conversion from Float64
 function BFloat16(x::Float64)
-	BFloat16(Float32(x))
+    BFloat16(Float32(x))
+end
+
+# Conversion from Float16
+function BFloat16(x::Float16)
+    BFloat16(Float32(x))
 end
 
 # Conversion from Integer
 function BFloat16(x::Integer)
-	convert(BFloat16, convert(Float32, x))
+    convert(BFloat16, convert(Float32, x))
+end
+
+# Conversion to Float16
+function Base.Float16(x::BFloat16)
+    Float16(Float32(x))
 end
 
 # Expansion to Float32
@@ -169,30 +221,44 @@ bitstring(x::BFloat16) = bitstring(reinterpret(UInt16, x))
 # next/prevfloat
 function Base.nextfloat(x::BFloat16)
     if isfinite(x)
-		ui = reinterpret(UInt16,x)
-		if ui < 0x8000	# positive numbers
-			return reinterpret(BFloat16,ui+0x0001)
-		elseif ui == 0x8000		# =-zero(T)
-			return reinterpret(BFloat16,0x0001)
-		else				# negative numbers
-			return reinterpret(BFloat16,ui-0x0001)
-		end
-	else	# NaN / Inf case
-		return x
-	end
+        ui = reinterpret(UInt16,x)
+        if ui < 0x8000  # positive numbers
+            return reinterpret(BFloat16,ui+0x0001)
+        elseif ui == 0x8000     # =-zero(T)
+            return reinterpret(BFloat16,0x0001)
+        else                # negative numbers
+            return reinterpret(BFloat16,ui-0x0001)
+        end
+    else    # NaN / Inf case
+        return x
+    end
 end
 
 function Base.prevfloat(x::BFloat16)
     if isfinite(x)
-		ui = reinterpret(UInt16,x)
-		if ui == 0x0000		# =zero(T)
-			return reinterpret(BFloat16,0x8001)
-		elseif ui < 0x8000	# positive numbers
-			return reinterpret(BFloat16,ui-0x0001)
-		else				# negative numbers
-			return reinterpret(BFloat16,ui+0x0001)
-		end
-	else	# NaN / Inf case
-		return x
-	end
+        ui = reinterpret(UInt16,x)
+        if ui == 0x0000     # =zero(T)
+            return reinterpret(BFloat16,0x8001)
+        elseif ui < 0x8000  # positive numbers
+            return reinterpret(BFloat16,ui-0x0001)
+        else                # negative numbers
+            return reinterpret(BFloat16,ui+0x0001)
+        end
+    else    # NaN / Inf case
+        return x
+    end
 end
+
+# math functions
+for F in (:abs, :abs2, :sqrt, :cbrt,
+          :exp, :exp2, :exp10, :expm1,
+          :log, :log2, :log10, :log1p,
+          :sin, :cos, :tan, :csc, :sec, :cot,
+          :asin, :acos, :atan, :acsc, :asec, :acot,
+          :sinh, :cosh, :tanh, :csch, :sech, :coth,
+          :asinh, :acosh, :atanh, :acsch, :asech, :acoth)
+  @eval begin
+     Base.$F(x::BFloat16) = BFloat16($F(Float32(x)))
+  end
+end
+
