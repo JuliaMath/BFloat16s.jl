@@ -258,7 +258,7 @@ for F in (:abs, :abs2, :sqrt, :cbrt,
           :sinh, :cosh, :tanh, :csch, :sech, :coth,
           :asinh, :acosh, :atanh, :acsch, :asech, :acoth)
   @eval begin
-     $F(x::BFloat16) = BFloat16($F(Float32(x)))
+     Base.$F(x::BFloat16) = BFloat16($F(Float32(x)))
   end
 end
 
