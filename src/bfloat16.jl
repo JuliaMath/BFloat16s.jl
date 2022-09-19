@@ -70,9 +70,19 @@ function BFloat16(x::Float64)
 	BFloat16(Float32(x))
 end
 
+# Conversion from Float16
+function BFloat16(x::Float16)
+	BFloat16(Float32(x))
+end
+
 # Conversion from Integer
 function BFloat16(x::Integer)
 	convert(BFloat16, convert(Float32, x))
+end
+
+# Conversion to Float16
+function Base.Float16(x::BFloat16)
+	Float16(Float32(x))
 end
 
 # Expansion to Float32
