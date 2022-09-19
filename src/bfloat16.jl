@@ -75,7 +75,6 @@ typemax(::Type{BFloat16}) = InfB16
 floatmax(::Type{BFloat16}) = reinterpret(BFloat16, 0x7f7f)
 floatmin(::Type{BFloat16}) = reinterpret(BFloat16, 0x0080)
 
-
 # Truncation from Float32
 Base.uinttype(::Type{BFloat16}) = UInt16
 Base.trunc(::Type{BFloat16}, x::Float32) = reinterpret(BFloat16,
@@ -94,22 +93,22 @@ end
 
 # Conversion from Float64
 function BFloat16(x::Float64)
-	BFloat16(Float32(x))
+    BFloat16(Float32(x))
 end
 
 # Conversion from Float16
 function BFloat16(x::Float16)
-	BFloat16(Float32(x))
+    BFloat16(Float32(x))
 end
 
 # Conversion from Integer
 function BFloat16(x::Integer)
-	convert(BFloat16, convert(Float32, x))
+    convert(BFloat16, convert(Float32, x))
 end
 
 # Conversion to Float16
 function Base.Float16(x::BFloat16)
-	Float16(Float32(x))
+    Float16(Float32(x))
 end
 
 # Expansion to Float32
@@ -206,30 +205,30 @@ bitstring(x::BFloat16) = bitstring(reinterpret(UInt16, x))
 # next/prevfloat
 function Base.nextfloat(x::BFloat16)
     if isfinite(x)
-		ui = reinterpret(UInt16,x)
-		if ui < 0x8000	# positive numbers
-			return reinterpret(BFloat16,ui+0x0001)
-		elseif ui == 0x8000		# =-zero(T)
-			return reinterpret(BFloat16,0x0001)
-		else				# negative numbers
-			return reinterpret(BFloat16,ui-0x0001)
-		end
-	else	# NaN / Inf case
-		return x
-	end
+        ui = reinterpret(UInt16,x)
+        if ui < 0x8000  # positive numbers
+            return reinterpret(BFloat16,ui+0x0001)
+        elseif ui == 0x8000     # =-zero(T)
+            return reinterpret(BFloat16,0x0001)
+        else                # negative numbers
+            return reinterpret(BFloat16,ui-0x0001)
+        end
+    else    # NaN / Inf case
+        return x
+    end
 end
 
 function Base.prevfloat(x::BFloat16)
     if isfinite(x)
-		ui = reinterpret(UInt16,x)
-		if ui == 0x0000		# =zero(T)
-			return reinterpret(BFloat16,0x8001)
-		elseif ui < 0x8000	# positive numbers
-			return reinterpret(BFloat16,ui-0x0001)
-		else				# negative numbers
-			return reinterpret(BFloat16,ui+0x0001)
-		end
-	else	# NaN / Inf case
-		return x
-	end
+        ui = reinterpret(UInt16,x)
+        if ui == 0x0000     # =zero(T)
+            return reinterpret(BFloat16,0x8001)
+        elseif ui < 0x8000  # positive numbers
+            return reinterpret(BFloat16,ui-0x0001)
+        else                # negative numbers
+            return reinterpret(BFloat16,ui+0x0001)
+        end
+    else    # NaN / Inf case
+        return x
+    end
 end
