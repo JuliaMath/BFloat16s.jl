@@ -11,12 +11,17 @@ for F in  (:abs, :abs2, :sqrt, :cbrt,
           :exp, :exp2, :exp10, :expm1,
           :log, :log2, :log10, :log1p,
           :sin, :cos, :tan, :csc, :sec, :cot,
-          :asin, :acos, :atan, :acsc, :asec, :acot,
+          :asin, :acos, :atan, :acot,
           :sinh, :cosh, :tanh, :csch, :sech, :coth,
-          :asinh, :acosh, :atanh, :acsch, :asech, :acoth)
+          :asinh, :atanh, :acsch, :asech)
   @eval begin
     @test $F(invphi) == BFloat16($F(Float32(invphi)))
   end
 end
 
-@test cosh(phi) == BFloat16(cosh(Float32(phi)))
+for F in (:asec, :acsc, :cosh, :acosh, :acoth)
+  @eval begin
+    @test $F(phi) == BFloat16($F(Float32(phi)))
+  end
+end
+
