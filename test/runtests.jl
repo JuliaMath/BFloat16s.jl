@@ -132,3 +132,5 @@ end
 end
 
 include("structure.jl")
+include("mathfuncs.jl")
+
