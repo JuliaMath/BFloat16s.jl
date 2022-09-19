@@ -22,7 +22,7 @@ Base.exponent_bias(::Type{BFloat16}) = 127
 Base.exponent_bits(::Type{BFloat16}) = 8
 Base.significand_bits(::Type{BFloat16}) = 7
 
-Base.exponent(x::BFloat16) = ((reinterpret(UInt16, bf) & Base.exponent_mask(BFloat16)) >> 7) - Base.exponent_bias(BFloat16)
+Base.exponent(x::BFloat16) = ((reinterpret(UInt16, x) & Base.exponent_mask(BFloat16)) >> 7) - Base.exponent_bias(BFloat16)
 Base.significand(x::BFloat16) = x - BFloat16(2)^exponent(x)
 Base.signbit(x::BFloat16) = (reinterpret(UInt16, x) & 0x8000) !== 0x0000
 
