@@ -130,3 +130,5 @@ end
   @test isnan(prevfloat(BFloat16s.NaNB16))
   @test isinf(prevfloat(BFloat16s.InfB16))
 end
+
+include("structure.jl")
