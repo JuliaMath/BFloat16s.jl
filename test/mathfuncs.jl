@@ -7,8 +7,13 @@ invphi = BFloat16(1.0f0 / Base.Math.MathConstants.golden)
 phi3 = phi * phi * phi
 invphi3 = invphi * invphi * invphi
 
-for F in (:abs, :sqrt, :exp, :log, :log2, :log10, :sin, :cos, :tan,
-          :asin, :acos, :atan, :sinh, :cosh, :tanh, :asinh, :atanh)
+for F in  (:abs, :abs2, :sqrt, :cbrt,
+          :exp, :exp2, :exp10, :expm1,
+          :log, :log2, :log10, :log1p,
+          :sin, :cos, :tan, :csc, :sec, :cot,
+          :asin, :acos, :atan, :acsc, :asec, :acot,
+          :sinh, :cosh, :tanh, :csch, :sech, :coth,
+          :asinh, :acosh, :atanh, :acsch, :asech, :acoth)
   @eval begin
     @test $F(invphi) == BFloat16($F(Float32(invphi)))
   end
