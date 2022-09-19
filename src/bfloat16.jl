@@ -250,7 +250,7 @@ function Base.prevfloat(x::BFloat16)
 end
 
 # math functions
-for F in (:abs, :abs2, :sqrt, :cbrt, :
+for F in (:abs, :abs2, :sqrt, :cbrt,
           :exp, :exp2, :exp10, :expm1,
           :log, :log2, :log10, :log1p,
           :sin, :cos, :tan, :csc, :sec, :cot,
