@@ -138,6 +138,9 @@ function Base.Float64(x::BFloat16)
     Float64(Float32(x))
 end
 
+# accept Irrational
+BFloat16s.BFloat16(x::Irrational) = BFloat16(Float32(x))
+
 # Truncation to integer types
 Base.unsafe_trunc(T::Type{<:Integer}, x::BFloat16) = unsafe_trunc(T, Float32(x))
 Base.trunc(::Type{T}, x::BFloat16) where {T<:Integer} = trunc(T, Float32(x))
@@ -268,3 +271,4 @@ Base.hypot(x::BFloat16, y::BFloat16) = BFloat16(hypot(Float32(x), Float32(y)))
 Base.hypot(x::BFloat16, y::BFloat16, z::BFloat16) = BFloat16(hypot(Float32(x), Float32(y), Float32(z)))
 Base.clamp(x::BFloat16, lo::BFloat16, hi::BFloat16) = BFloat16(clamp(Float32(x), Float32(lo), Float32(hi)))
 
+Base.bitstring(x::BFloat16) = bitstring(reinterpret(UInt16, x))
