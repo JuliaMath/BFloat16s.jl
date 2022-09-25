@@ -13,12 +13,24 @@ experiments.
 
 This package exports the BFloat16 data type. This datatype should behave
 just like any builtin floating point type (e.g. you can construct it from
-other floating point types - e.g. `BFloat16(1.0)`). In addition, this package
-provides the `LowPrecArray` type. This array is supposed to emulate the kind
-of matmul operation that TPUs do well (BFloat16 multiply with Float32
-accumulate). Broadcasts and scalar operations are peformed in Float32 (as
-they would be on a TPU) while matrix multiplies are performed in BFloat16 with
-Float32 accumulates, e.g.
+other floating point types - e.g. `BFloat16(1.0)`). Many predicates, 
+conversion, structural and mathematical functions are supported:
+```
+ Int16, Int32, Int64, Float16, Float32, Float64, +, -, *, /, ^, ==, <, <=, >=, >, !=, inv,
+ isfinite, isnan, precision, iszero, eps, typemin, typemax, floatmin, floatmax,
+ sign_mask, exponent_mask, significand_mask, exponent_bits, significand_bits, exponent_bias,
+ signbit, exponent, significand, frexp, ldexp, exponent_one, exponent_half,
+ exp, exp2, exp10, expm1, log, log2, log10, log1p,
+ sin, cos, tan, csc, sec, cot, asin, acos, atan, acsc, asec, acot,
+ sinh, cosh, tanh, csch, sech, coth, asinh, acosh, atanh, acsch, asech, acoth,
+ round, trunc, floor, ceil, abs, abs2, sqrt, cbrt, clamp, hypot, bitstring
+```
+
+In addition, this package provides the `LowPrecArray` type. This array is 
+supposed to emulate the kind of matmul operation that TPUs do well
+(BFloat16 multiply with Float32 accumulate). Broadcasts and scalar operations
+are peformed in Float32 (as they would be on a TPU) while matrix multiplies
+are performed in BFloat16 with Float32 accumulates, e.g.
 
 ```
 julia> A = LowPrecArray(rand(Float32, 5, 5))
