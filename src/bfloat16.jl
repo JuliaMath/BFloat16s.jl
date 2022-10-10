@@ -6,7 +6,7 @@ import Base: isfinite, isnan, precision, iszero, eps,
     signbit, exponent, significand, frexp, ldexp,
     round, Int16, Int32, Int64,
     +, -, *, /, ^, ==, <, <=, >=, >, !=, inv,
-    abs, abs2, sqrt, cbrt, 
+    abs, abs2, sqrt, cbrt,
     exp, exp2, exp10, expm1,
     log, log2, log10, log1p,
     sin, cos, tan, csc, sec, cot,
@@ -39,7 +39,7 @@ end
     1 + isig / BFloat16(2)^7
 end
 
-Base.exponent(x::BFloat16) = 
+Base.exponent(x::BFloat16) =
     ((reinterpret(UInt16, x) & Base.exponent_mask(BFloat16)) >> 7) - Base.exponent_bias(BFloat16)
 
 function Base.frexp(x::BFloat16)
@@ -66,7 +66,7 @@ round(x::BFloat16, r::RoundingMode{:Up}) = BFloat16(ceil(Float32(x)))
 round(x::BFloat16, r::RoundingMode{:Down}) = BFloat16(floor(Float32(x)))
 round(x::BFloat16, r::RoundingMode{:Nearest}) = BFloat16(round(Float32(x)))
 
-Base.trunc(bf::BFloat16) = signbit(bf) ? ceil(bf) : floor(bf) 
+Base.trunc(bf::BFloat16) = signbit(bf) ? ceil(bf) : floor(bf)
 
 Int64(x::BFloat16) = Int64(Float32(x))
 Int32(x::BFloat16) = Int32(Float32(x))
@@ -148,14 +148,6 @@ end
 -(x::BFloat16) = reinterpret(BFloat16, reinterpret(UInt16, x) ⊻ sign_mask(BFloat16))
 ^(x::BFloat16, y::Integer) = BFloat16(^(Float32(x), y))
 
-for F in (:abs, :sqrt, :exp, :log, :log2, :log10,
-          :sin, :cos, :tan, :asin, :acos, :atan,
-          :sinh, :cosh, :tanh, :asinh, :acosh, :atanh)
-    @eval begin
-        $F(x::BFloat16) = BFloat16($F(Float32(x)))
-    end
-end
-
 const ZeroBFloat16 = BFloat16(0.0f0)
 const OneBFloat16 = BFloat16(1.0f0)
 Base.zero(::Type{BFloat16}) = ZeroBFloat16
@@ -211,9 +203,6 @@ import Random: rand, randn, randexp, AbstractRNG, Sampler
 rand(rng::AbstractRNG, ::Sampler{BFloat16}) = convert(BFloat16, rand(rng))
 randn(rng::AbstractRNG, ::Type{BFloat16}) = convert(BFloat16, randn(rng))
 randexp(rng::AbstractRNG, ::Type{BFloat16}) = convert(BFloat16, randexp(rng))
-          
-# Exponent
-exponent(x::BFloat16) = exponent(Float32(x))
 
 # Bitstring
 bitstring(x::BFloat16) = bitstring(reinterpret(UInt16, x))
