@@ -1,4 +1,10 @@
-# BFloat16s
+## BFloat16s
+----
+
+[![Docs](https://img.shields.io/badge/docs-stable-blue.svg)](https://github.com/JuliaMath/BFloat16s.jl/stable/) [![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://github.com/JuliaMath/BFloat16s.jl/dev/)  
+[![PackageDownloads](https://shields.io/endpoint?url=https://pkgs.genieframework.com/api/v1/badge/SaferIntegers)](https://pkgs.genieframework.com?packages=BFloat16s&startdate=2010-01-01&enddate=2040-12-31) [![MIT license](http://img.shields.io/badge/license-MIT-brightgreen.svg)](http://opensource.org/licenses/MIT) 
+
+----
 
 This package defines the [BFloat16 data type](https://en.wikipedia.org/wiki/Bfloat16_floating-point_format).
 
@@ -62,3 +68,4 @@ julia> Float64.(A.storage)^2
 Note that the low precision result differs from (is less precise than) the
 result computed in Float32 arithmetic (which matches the result in Float64
 precision).
+
