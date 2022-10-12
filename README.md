@@ -1,10 +1,15 @@
 # BFloat16s
 
 This package defines the [BFloat16 data type](https://en.wikipedia.org/wiki/Bfloat16_floating-point_format).
-The only currently available hardware implementation of this datatype are
-Google's [Cloud TPUs](https://en.wikipedia.org/wiki/Tensor_processing_unit).
-As such, this package is suitable to evaluate whether using TPUs would cause
-precision problems for any particular algorithm, even without access to TPU
+
+Hardware implementation of this datatype is available in Google's
+[Cloud TPUs](https://en.wikipedia.org/wiki/Tensor_processing_unit) as well as
+in a growing number of CPUs, GPUs, and more specialized processors. See the
+[wikipedia entry](https://en.wikipedia.org/wiki/Bfloat16_floating-point_format)
+for more information.
+
+This package is suitable to evaluate whether using BFloat16 would cause
+precision problems for any particular algorithm, even without access to supporting
 hardware. Note that this package is designed for functionality, not performance,
 so this package should be used for precision experiments only, not performance
 experiments.
