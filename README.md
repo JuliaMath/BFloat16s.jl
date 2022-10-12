@@ -1,7 +1,7 @@
 ## BFloat16s
 ----
 
-[![Docs](https://img.shields.io/badge/docs-stable-blue.svg)](https://github.com/JuliaMath/BFloat16s.jl/stable/)  [![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://github.com/JuliaMath/BFloat16s.jl/dev/)  [![PackageDownloads](https://shields.io/endpoint?url=https://pkgs.genieframework.com/api/v1/badge/BFloat16s.jl)](https://pkgs.genieframework.com?packages=BFloat16s&startdate=2010-01-01&enddate=2040-12-31) [![MIT license](http://img.shields.io/badge/license-MIT-brightgreen.svg)](http://opensource.org/licenses/MIT) 
+[![Docs](https://img.shields.io/badge/docs-stable-blue.svg)](https://github.com/JuliaMath/BFloat16s.jl/stable/)  [![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://github.com/JuliaMath/BFloat16s.jl/dev/) [![MIT license](http://img.shields.io/badge/license-MIT-brightgreen.svg)](http://opensource.org/licenses/MIT) 
 
 ----
 
