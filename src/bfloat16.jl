@@ -223,7 +223,7 @@ function Base.nextfloat(x::BFloat16)
     end
 end
 
-function Base.nexfloat(x::BFloat16,n::Integer)
+function Base.nextfloat(x::BFloat16,n::Integer)
     n < 0 && return prevfloat(x,-n)
     n == 0 && return x
     nextfloat(nextfloat(x),n-1)
