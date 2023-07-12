@@ -1,10 +1,20 @@
-# BFloat16s
+## BFloat16s
+----
+
+[![Docs](https://img.shields.io/badge/docs-stable-blue.svg)](https://github.com/JuliaMath/BFloat16s.jl/stable/)  [![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://github.com/JuliaMath/BFloat16s.jl/dev/) [![MIT license](http://img.shields.io/badge/license-MIT-brightgreen.svg)](http://opensource.org/licenses/MIT) 
+
+----
 
 This package defines the [BFloat16 data type](https://en.wikipedia.org/wiki/Bfloat16_floating-point_format).
-The only currently available hardware implementation of this datatype are
-Google's [Cloud TPUs](https://en.wikipedia.org/wiki/Tensor_processing_unit).
-As such, this package is suitable to evaluate whether using TPUs would cause
-precision problems for any particular algorithm, even without access to TPU
+
+Hardware implementation of this datatype is available in Google's
+[Cloud TPUs](https://en.wikipedia.org/wiki/Tensor_processing_unit) as well as
+in a growing number of CPUs, GPUs, and more specialized processors. See the
+[wikipedia entry](https://en.wikipedia.org/wiki/Bfloat16_floating-point_format)
+for more information.
+
+This package is suitable to evaluate whether using BFloat16 would cause
+precision problems for any particular algorithm, even without access to supporting
 hardware. Note that this package is designed for functionality, not performance,
 so this package should be used for precision experiments only, not performance
 experiments.
@@ -57,3 +67,4 @@ julia> Float64.(A.storage)^2
 Note that the low precision result differs from (is less precise than) the
 result computed in Float32 arithmetic (which matches the result in Float64
 precision).
+
