@@ -181,6 +181,12 @@ function Base.nextfloat(x::BFloat16)
 	end
 end
 
+function Base.nexfloat(x::BFloat16,n::Integer)
+    n < 0 && return prevfloat(x,-n)
+    n == 0 && return x
+    nextfloat(nextfloat(x),n-1)
+end
+
 function Base.prevfloat(x::BFloat16)
     if isfinite(x)
 		ui = reinterpret(UInt16,x)
@@ -194,4 +200,10 @@ function Base.prevfloat(x::BFloat16)
 	else	# NaN / Inf case
 		return x
 	end
+end
+
+function Base.prevfloat(x::BFloat16,n::Integer)
+    n < 0 && return nextfloat(x,-n)
+    n == 0 && return x
+    prevfloat(prevfloat(x),n-1)
 end

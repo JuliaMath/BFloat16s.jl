@@ -126,3 +126,23 @@ end
   @test isnan(prevfloat(BFloat16s.NaNB16))
   @test isinf(prevfloat(BFloat16s.InfB16))
 end
+
+@testset "Next/prevfloat(x,::Integer)" begin
+
+  x = one(BFloat16)
+  @test x == prevfloat(nextfloat(x,100),100)
+  @test x == nextfloat(prevfloat(x,100),100)
+
+  x = -one(BFloat16)
+  @test x == prevfloat(nextfloat(x,100),100)
+  @test x == nextfloat(prevfloat(x,100),100)
+
+  x = one(BFloat16)
+  @test nextfloat(x,5) == prevfloat(x,-5)
+  @test prevfloat(x,-5) == nextfloat(x,5)
+
+  @test isinf(nextfloat(floatmax(BFloat16),5))
+  @test prevfloat(floatmin(BFloat16),2^8) < 0
+  @test nextfloat(-floatmin(BFloat16),2^8) > 0
+  
+end
