@@ -131,6 +131,14 @@ end
   @test isinf(prevfloat(BFloat16s.InfB16))
 end
 
+@testset "Decompose BFloat16" begin
+  for x in randn(100)
+    bf16 = BFloat16(x)
+    s,e,d = Base.decompose(bf16)
+    @test BFloat16(s*2^e/d) == bf16
+  end
+end
+
 include("structure.jl")
 include("mathfuncs.jl")
 
