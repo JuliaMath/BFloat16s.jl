@@ -135,7 +135,7 @@ end
   for x in randn(100)
     bf16 = BFloat16(x)
     s,e,d = Base.decompose(bf16)
-    @test BFloat16(s*2^e/d) == bf16
+    @test BFloat16(s*2.0^e/d) == bf16
   end
 end
 
