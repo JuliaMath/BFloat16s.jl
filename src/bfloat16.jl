@@ -13,19 +13,25 @@ import Base: isfinite, isnan, precision, iszero, eps,
     asin, acos, atan, acsc, asec, acot,
     sinh, cosh, tanh, csch, sech, coth,
     asinh, acosh, atanh, acsch, asech, acoth,
-    bitstring
+    bitstring, isinteger
 
-primitive type BFloat16 <: AbstractFloat 16 end
+# Julia 1.11 provides codegen support for BFloat16
+if isdefined(Core, :BFloat16)
+    using Core: BFloat16
+    const codegen_support = true
+else
+    primitive type BFloat16 <: AbstractFloat 16 end
+    const codegen_support = false
+end
 
 Base.reinterpret(::Type{Unsigned}, x::BFloat16) = reinterpret(UInt16, x)
 Base.reinterpret(::Type{Signed}, x::BFloat16) = reinterpret(Int16, x)
 
 # Floating point property queries
 for f in (:sign_mask, :exponent_mask, :exponent_one,
-            :exponent_half, :significand_mask)
+          :exponent_half, :significand_mask)
     @eval $(f)(::Type{BFloat16}) = UInt16($(f)(Float32) >> 16)
 end
-
 Base.exponent_bias(::Type{BFloat16}) = 127
 Base.exponent_bits(::Type{BFloat16}) = 8
 Base.significand_bits(::Type{BFloat16}) = 7
@@ -65,15 +71,23 @@ isnan(x::BFloat16) = (reinterpret(Unsigned,x) & ~sign_mask(BFloat16)) > exponent
 precision(::Type{BFloat16}) = 8
 eps(::Type{BFloat16}) = Base.bitcast(BFloat16, 0x3c00)
 
-round(x::BFloat16, r::RoundingMode{:Up}) = BFloat16(ceil(Float32(x)))
-round(x::BFloat16, r::RoundingMode{:Down}) = BFloat16(floor(Float32(x)))
-round(x::BFloat16, r::RoundingMode{:Nearest}) = BFloat16(round(Float32(x)))
+## Rounding ##
+if codegen_support
+    round(x::BFloat16, ::RoundingMode{:ToZero})  = Base.trunc_llvm(x)
+    round(x::BFloat16, ::RoundingMode{:Down})    = Base.floor_llvm(x)
+    round(x::BFloat16, ::RoundingMode{:Up})      = Base.ceil_llvm(x)
+    round(x::BFloat16, ::RoundingMode{:Nearest}) = Base.rint_llvm(x)
+else
+    round(x::BFloat16, r::RoundingMode{:ToZero}) = BFloat16(trunc(Float32(x)))
+    round(x::BFloat16, r::RoundingMode{:Down}) = BFloat16(floor(Float32(x)))
+    round(x::BFloat16, r::RoundingMode{:Up}) = BFloat16(ceil(Float32(x)))
+    round(x::BFloat16, r::RoundingMode{:Nearest}) = BFloat16(round(Float32(x)))
+end
+# round(::Type{Signed},   x::BFloat16, r::RoundingMode) = round(Int, x, r)
+# round(::Type{Unsigned}, x::BFloat16, r::RoundingMode) = round(UInt, x, r)
+# round(::Type{Integer},  x::BFloat16, r::RoundingMode) = round(Int, x, r)
 
 Base.trunc(bf::BFloat16) = signbit(bf) ? ceil(bf) : floor(bf)
-
-Int64(x::BFloat16) = Int64(Float32(x))
-Int32(x::BFloat16) = Int32(Float32(x))
-Int16(x::BFloat16) = Int16(Float32(x))
 
 ## floating point traits ##
 """
@@ -100,56 +114,88 @@ Base.trunc(::Type{BFloat16}, x::Float32) = reinterpret(BFloat16,
         (reinterpret(UInt32, x) >> 16) % UInt16
     )
 
-# Conversion from Float32
-function BFloat16(x::Float32)
-    isnan(x) && return NaNB16
-    # Round to nearest even (matches TensorFlow and our convention for
-    # rounding to lower precision floating point types).
-    h = reinterpret(UInt32, x)
-    h += 0x7fff + ((h >> 16) & 1)
-    return reinterpret(BFloat16, (h >> 16) % UInt16)
-end
+if codegen_support
+    BFloat16(x::Float32) = Base.fptrunc(BFloat16, x)
+    BFloat16(x::Float64) = Base.fptrunc(BFloat16, x)
 
-# Conversion from Float64
-function BFloat16(x::Float64)
-    BFloat16(Float32(x))
-end
+    # XXX: can LLVM do this natively?
+    BFloat16(x::Float16) = BFloat16(Float32(x))
+else
+    # Conversion from Float32
+    function BFloat16(x::Float32)
+        isnan(x) && return NaNB16
+        # Round to nearest even (matches TensorFlow and our convention for
+        # rounding to lower precision floating point types).
+        h = reinterpret(UInt32, x)
+        h += 0x7fff + ((h >> 16) & 1)
+        return reinterpret(BFloat16, (h >> 16) % UInt16)
+    end
 
-# Conversion from Float16
-function BFloat16(x::Float16)
-    BFloat16(Float32(x))
+    # Conversion from Float64
+    function BFloat16(x::Float64)
+        BFloat16(Float32(x))
+    end
+
+    # Conversion from Float16
+    function BFloat16(x::Float16)
+        BFloat16(Float32(x))
+    end
 end
 
 # Conversion from Integer
-function BFloat16(x::Integer)
-    convert(BFloat16, convert(Float32, x))
+if codegen_support
+    for st in (Int8, Int16, Int32, Int64)
+        @eval begin
+            BFloat16(x::($st)) = Base.sitofp(BFloat16, x)
+        end
+    end
+    for ut in (Bool, UInt8, UInt16, UInt32, UInt64)
+        @eval begin
+            BFloat16(x::($ut)) = Base.uitofp(BFloat16, x)
+        end
+    end
+else
+    BFloat16(x::Integer) = convert(BFloat16, convert(Float32, x))
 end
+# TODO: optimize
+BFloat16(x::UInt128) = convert(BFloat16, Float64(x))
+BFloat16(x::Int128)  = convert(BFloat16, Float64(x))
 
 # Conversion to Float16
 function Base.Float16(x::BFloat16)
     Float16(Float32(x))
 end
 
-# Expansion to Float32
-function Base.Float32(x::BFloat16)
-    reinterpret(Float32, UInt32(reinterpret(Unsigned, x)) << 16)
-end
+if codegen_support
+    Base.Float32(x::BFloat16) = Base.fpext(Float32, x)
+    Base.Float64(x::BFloat16) = Base.fpext(Float64, x)
+else
+    # Expansion to Float32
+    function Base.Float32(x::BFloat16)
+        reinterpret(Float32, UInt32(reinterpret(Unsigned, x)) << 16)
+    end
 
-# Expansion to Float64
-function Base.Float64(x::BFloat16)
-    Float64(Float32(x))
+    # Expansion to Float64
+    function Base.Float64(x::BFloat16)
+        Float64(Float32(x))
+    end
 end
-
-# Truncation to integer types
-Base.unsafe_trunc(T::Type{<:Integer}, x::BFloat16) = unsafe_trunc(T, Float32(x))
-Base.trunc(::Type{T}, x::BFloat16) where {T<:Integer} = trunc(T, Float32(x))
 
 # Basic arithmetic
-for f in (:+, :-, :*, :/, :^)
-    @eval ($f)(x::BFloat16, y::BFloat16) = BFloat16($(f)(Float32(x), Float32(y)))
+if codegen_support
+    +(x::T, y::T) where {T<:BFloat16} = Base.add_float(x, y)
+    -(x::T, y::T) where {T<:BFloat16} = Base.sub_float(x, y)
+    *(x::T, y::T) where {T<:BFloat16} = Base.mul_float(x, y)
+    /(x::T, y::T) where {T<:BFloat16} = Base.div_float(x, y)
+    -(x::BFloat16) = Base.neg_float(x)
+    ^(x::BFloat16, y::BFloat16) = BFloat16(Float32(x)^Float32(y))
+else
+    for f in (:+, :-, :*, :/, :^)
+        @eval ($f)(x::BFloat16, y::BFloat16) = BFloat16($(f)(Float32(x), Float32(y)))
+    end
+    -(x::BFloat16) = reinterpret(BFloat16, reinterpret(Unsigned, x) ⊻ sign_mask(BFloat16))
 end
--(x::BFloat16) = reinterpret(BFloat16, reinterpret(Unsigned, x) ⊻ sign_mask(BFloat16))
-^(x::BFloat16, y::Integer) = BFloat16(^(Float32(x), y))
+^(x::BFloat16, y::Integer) = BFloat16(Float32(x)^y)
 
 const ZeroBFloat16 = BFloat16(0.0f0)
 const OneBFloat16 = BFloat16(1.0f0)
@@ -185,7 +231,68 @@ for t in (Int8, Int16, Int32, Int64, Int128, UInt8, UInt16, UInt32, UInt64, UInt
 end
 
 # Wide multiplication
-Base.widemul(x::BFloat16, y::BFloat16) = Float32(x) * Float32(y)
+Base.widemul(x::BFloat16, y::BFloat16) = widen(x) * widen(y)
+
+# Truncation to integer types
+if codegen_support
+    for Ti in (Int8, Int16, Int32, Int64)
+        @eval begin
+            Base.unsafe_trunc(::Type{$Ti}, x::BFloat16) = Base.fptosi($Ti, x)
+        end
+    end
+    for Ti in (UInt8, UInt16, UInt32, UInt64)
+        @eval begin
+            Base.unsafe_trunc(::Type{$Ti}, x::BFloat16) = Base.fptoui($Ti, x)
+        end
+    end
+else
+    Base.unsafe_trunc(T::Type{<:Integer}, x::BFloat16) = unsafe_trunc(T, Float32(x))
+end
+for Ti in (Int8, Int16, Int32, Int64, Int128, UInt8, UInt16, UInt32, UInt64, UInt128)
+    if Ti <: Unsigned || sizeof(Ti) < 2
+        # Here `BFloat16(typemin(Ti))-1` is exact, so we can compare the lower-bound
+        # directly. `BFloat16(typemax(Ti))+1` is either always exactly representable, or
+        # rounded to `Inf` (e.g. when `Ti==UInt128 && BFloat16==Float32`).
+        @eval begin
+            function Base.trunc(::Type{$Ti}, x::BFloat16)
+                if $(BFloat16(typemin(Ti))-one(BFloat16)) < x < $(BFloat16(typemax(Ti))+one(BFloat16))
+                    return Base.unsafe_trunc($Ti,x)
+                else
+                    throw(InexactError(:trunc, $Ti, x))
+                end
+            end
+            function (::Type{$Ti})(x::BFloat16)
+                if ($(BFloat16(typemin(Ti))) <= x <= $(BFloat16(typemax(Ti)))) && isinteger(x)
+                    return Base.unsafe_trunc($Ti,x)
+                else
+                    throw(InexactError($(Expr(:quote,Ti.name.name)), $Ti, x))
+                end
+            end
+        end
+    else
+        # Here `eps(BFloat16(typemin(Ti))) > 1`, so the only value which can be
+        # truncated to `BFloat16(typemin(Ti)` is itself. Similarly,
+        # `BFloat16(typemax(Ti))` is inexact and will be rounded up. This assumes that
+        # `BFloat16(typemin(Ti)) > -Inf`, which is true for these types, but not for
+        # `Float16` or larger integer types.
+        @eval begin
+            function Base.trunc(::Type{$Ti}, x::BFloat16)
+                if $(BFloat16(typemin(Ti))) <= x < $(BFloat16(typemax(Ti)))
+                    return unsafe_trunc($Ti,x)
+                else
+                    throw(InexactError(:trunc, $Ti, x))
+                end
+            end
+            function (::Type{$Ti})(x::BFloat16)
+                if ($(BFloat16(typemin(Ti))) <= x < $(BFloat16(typemax(Ti)))) && isinteger(x)
+                    return unsafe_trunc($Ti,x)
+                else
+                    throw(InexactError($(Expr(:quote,Ti.name.name)), $Ti, x))
+                end
+            end
+        end
+    end
+end
 
 # Showing
 function Base.show(io::IO, x::BFloat16)
