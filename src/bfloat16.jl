@@ -2,7 +2,7 @@ import Base: isfinite, isnan, precision, iszero, eps,
     typemin, typemax, floatmin, floatmax,
     sign_mask, exponent_mask, significand_mask,
     exponent_bits, significand_bits, exponent_bias,
-    exponent_one, exponent_half,
+    exponent_one, exponent_half, leading_zeros,
     signbit, exponent, significand, frexp, ldexp,
     round, Int16, Int32, Int64,
     +, -, *, /, ^, ==, <, <=, >=, >, !=, inv,
@@ -38,14 +38,17 @@ Base.significand_bits(::Type{BFloat16}) = 7
 Base.signbit(x::BFloat16) = (reinterpret(Unsigned, x) & 0x8000) !== 0x0000
 
 function Base.significand(x::BFloat16)
-    result = abs_significand(x)
-    ifelse(signbit(x), -result, result)
-end
-
-@inline function abs_significand(x::BFloat16)
-    usig = Base.significand_mask(BFloat16) & reinterpret(Unsigned, x)
-    isig = Int16(usig)
-    1 + isig / BFloat16(2)^7
+    xu = reinterpret(Unsigned, x)
+    xs = xu & ~sign_mask(BFloat16)
+    xs >= exponent_mask(BFloat16) && return x # NaN or Inf
+    if xs <= (~exponent_mask(BFloat16) & ~sign_mask(BFloat16)) # x is subnormal
+        xs == 0 && return x # +-0
+        m = unsigned(leading_zeros(xs) - exponent_bits(BFloat16))
+        xs <<= m
+        xu = xs | (xu & sign_mask(BFloat16))
+    end
+    xu = (xu & ~exponent_mask(BFloat16)) | exponent_one(BFloat16)
+    return reinterpret(BFloat16, xu)
 end
 
 Base.exponent(x::BFloat16) =
