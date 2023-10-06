@@ -16,12 +16,13 @@ import Base: isfinite, isnan, precision, iszero, eps,
     bitstring, isinteger
 
 # Julia 1.11 provides codegen support for BFloat16
-if isdefined(Core, :BFloat16)
+const codegen_support = if isdefined(Core, :BFloat16) &&
+                           Sys.ARCH in [:x86_64, :i686]
     using Core: BFloat16
-    const codegen_support = true
+    true
 else
     primitive type BFloat16 <: AbstractFloat 16 end
-    const codegen_support = false
+    false
 end
 
 Base.reinterpret(::Type{Unsigned}, x::BFloat16) = reinterpret(UInt16, x)
