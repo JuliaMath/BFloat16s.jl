@@ -1,5 +1,7 @@
 using Test, BFloat16s, Printf, Random
 
+@info "Testing BFloat16s" BFloat16s.llvm_storage BFloat16s.llvm_arithmetic
+
 @testset "comparisons" begin
     @test BFloat16(1)   <  BFloat16(2)
     @test BFloat16(1f0) <  BFloat16(2f0)
