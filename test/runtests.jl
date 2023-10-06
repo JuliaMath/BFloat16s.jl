@@ -29,6 +29,14 @@ end
     @test Int64(BFloat16(10)) == Int64(10)
 end
 
+@testset "abi" begin
+  f() = BFloat16(1)
+  @test f() == BFloat16(1)
+
+  g(x) = x+BFloat16(1)
+  @test g(BFloat16(2)) == BFloat16(3)
+end
+
 @testset "functions" begin
     @test abs(BFloat16(-10)) == BFloat16(10)
     @test BFloat16(2) ^ BFloat16(4) == BFloat16(16)
