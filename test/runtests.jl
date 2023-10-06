@@ -128,9 +128,8 @@ end
   @test isinf(nextfloat(BFloat16s.InfB16))
 
   @test isnan(prevfloat(BFloat16s.NaNB16))
-  @test isinf(prevfloat(BFloat16s.InfB16))
 end
-  
+
 @testset "Next/prevfloat(x,::Integer)" begin
 
   x = one(BFloat16)
@@ -150,6 +149,6 @@ end
   @test nextfloat(-floatmin(BFloat16),2^8) > 0
 end
 
-  
+
 include("structure.jl")
 include("mathfuncs.jl")
