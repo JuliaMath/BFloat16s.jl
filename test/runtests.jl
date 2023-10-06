@@ -60,7 +60,7 @@ end
                        ("%.2a",    "0x1.3cp+0"),
                        ("%.2A",    "0X1.3CP+0")),
         num in (BFloat16(1.234),)
-        @test @eval(@sprintf($fmt, $num) == $val)
+        @eval @test @sprintf($fmt, $num) == $val
     end
     @test (@sprintf "%f" BFloat16(Inf)) == "Inf"
     @test (@sprintf "%f" BFloat16(NaN)) == "NaN"
@@ -75,7 +75,7 @@ end
                        ("%-+10.5g",    "+123.5    "),
                        ("%010.5g", "00000123.5")),
         num in (BFloat16(123.5),)
-        @test @eval(@sprintf($fmt, $num) == $val)
+        @eval @test @sprintf($fmt, $num) == $val
     end
     @test( @sprintf( "%10.5g", BFloat16(-123.5) ) == "    -123.5")
     @test( @sprintf( "%010.5g", BFloat16(-123.5) ) == "-0000123.5")
