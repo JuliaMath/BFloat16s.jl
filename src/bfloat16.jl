@@ -15,6 +15,8 @@ import Base: isfinite, isnan, precision, iszero, eps,
     asinh, acosh, atanh, acsch, asech, acoth,
     bitstring, isinteger
 
+import Printf
+
 # LLVM 11 added support for BFloat16 in the IR; Julia 1.11 added support for generating
 # code that uses the `bfloat` IR type, together with the necessary runtime functions.
 # However, not all LLVM targets support `bfloat`. If the target can store/load BFloat16s
@@ -332,6 +334,7 @@ function Base.show(io::IO, x::BFloat16)
         hastypeinfo || print(io, ")")
     end
 end
+Printf.tofloat(x::BFloat16) = Float32(x)
 
 # Random
 import Random: rand, randn, randexp, AbstractRNG, Sampler
