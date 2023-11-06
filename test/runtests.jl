@@ -140,6 +140,15 @@ end
   @test isnan(prevfloat(BFloat16s.NaNB16))
 end
 
+@testset "Decompose BFloat16" begin
+  for x in randn(100)
+    bf16 = BFloat16(x)
+    s,e,d = Base.decompose(bf16)
+    @test BFloat16(s*2.0^e/d) == bf16
+  end
+end
+
+
 @testset "Next/prevfloat(x,::Integer)" begin
 
   x = one(BFloat16)
@@ -158,7 +167,6 @@ end
   @test prevfloat(floatmin(BFloat16),2^8) < 0
   @test nextfloat(-floatmin(BFloat16),2^8) > 0
 end
-
 
 include("structure.jl")
 include("mathfuncs.jl")
