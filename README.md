@@ -1,11 +1,8 @@
-## BFloat16s
-----
-
+# BFloat16s.jl
 [![Docs](https://img.shields.io/badge/docs-stable-blue.svg)](https://github.com/JuliaMath/BFloat16s.jl/stable/)  [![Docs](https://img.shields.io/badge/docs-dev-blue.svg)](https://github.com/JuliaMath/BFloat16s.jl/dev/) [![MIT license](http://img.shields.io/badge/license-MIT-brightgreen.svg)](http://opensource.org/licenses/MIT) 
 
-----
-
-This package defines the [BFloat16 data type](https://en.wikipedia.org/wiki/Bfloat16_floating-point_format).
+This package defines the [BFloat16 data type](https://en.wikipedia.org/wiki/Bfloat16_floating-point_format),
+a floating-point format with 1 sign bit, 8 exponent bits and 7 mantissa bits.
 
 Hardware implementation of this datatype is available in Google's
 [Cloud TPUs](https://en.wikipedia.org/wiki/Tensor_processing_unit) as well as
@@ -19,18 +16,56 @@ hardware. Note that this package is designed for functionality, not performance,
 so this package should be used for precision experiments only, not performance
 experiments.
 
-# Usage
+## Usage
 
-This package exports the BFloat16 data type. This datatype should behave
-just like any builtin floating point type (e.g. you can construct it from
-other floating point types - e.g. `BFloat16(1.0)`). In addition, this package
-provides the `LowPrecArray` type. This array is supposed to emulate the kind
-of matmul operation that TPUs do well (BFloat16 multiply with Float32
+This package exports the `BFloat16` data type. This datatype behaves
+just like any built-in floating-point type
+
+```julia
+julia> using BFloat16s
+
+julia> a = BFloat16(2)
+BFloat16(2.0)
+
+julia> sqrt(a)
+BFloat16(1.4140625)
+```
+
+However, in practice you may hit a `MethodError` indicating that this package does not implement
+a method for `BFloat16` although it should. In this case, please raise an issue so that we can
+close the gap in support compared to other low-precision types like `Float16`. The usage
+of `BFloat16` should be as smooth as the following example, solving a linear equation system
+
+```julia
+julia> A = randn(BFloat16,3,3)
+3×3 Matrix{BFloat16}:
+  1.46875   -1.20312   -1.0
+  0.257812  -0.671875  -0.929688
+ -0.410156  -1.75      -0.0162354
+
+julia> b = randn(BFloat16,3)
+3-element Vector{BFloat16}:
+ -0.26367188
+ -0.14160156
+  0.77734375
+
+julia> A\b
+3-element Vector{BFloat16}:
+ -0.24902344
+ -0.38671875
+  0.36328125
+```
+
+## `LowPrecArray` for mixed-precision Float32/BFloat16 matrix multiplications
+
+In addition, this package provides the `LowPrecArray` type.
+This array is supposed to emulate the kind
+of matrix multiplications that TPUs do well (BFloat16 multiply with Float32
 accumulate). Broadcasts and scalar operations are peformed in Float32 (as
 they would be on a TPU) while matrix multiplies are performed in BFloat16 with
 Float32 accumulates, e.g.
 
-```
+```julia
 julia> A = LowPrecArray(rand(Float32, 5, 5))
 5×5 LowPrecArray{2,Array{Float32,2}}:
  0.252818  0.619702   0.553199  0.75225   0.30819
@@ -64,7 +99,7 @@ julia> Float64.(A.storage)^2
  1.22742  1.90498  1.70653  1.63928  2.18076
 ```
 
-Note that the low precision result differs from (is less precise than) the
+Note that the low-precision result differs from (is less precise than) the
 result computed in Float32 arithmetic (which matches the result in Float64
 precision).
 
