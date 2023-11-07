@@ -168,5 +168,12 @@ end
   @test nextfloat(-floatmin(BFloat16),2^8) > 0
 end
 
+@testset "maxintfloat" begin
+  
+  a = maxintfloat(BFloat16)
+  @test a+1-1 == a-1    # the first +1 cannot be represented
+  @test a-1+1 == a      # but -1 can
+end
+
 include("structure.jl")
 include("mathfuncs.jl")

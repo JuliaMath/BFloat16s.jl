@@ -145,6 +145,7 @@ typemin(::Type{BFloat16}) = -InfB16
 typemax(::Type{BFloat16}) = InfB16
 floatmax(::Type{BFloat16}) = reinterpret(BFloat16, 0x7f7f)
 floatmin(::Type{BFloat16}) = reinterpret(BFloat16, 0x0080)
+Base.maxintfloat(::Type{BFloat16}) = reinterpret(BFloat16,0x4380) # = BFloat16(256)
 
 # Truncation from Float32
 Base.uinttype(::Type{BFloat16}) = UInt16
