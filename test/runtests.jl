@@ -27,6 +27,8 @@ end
     @test Float64(BFloat16(10)) == 10.0
     @test Int32(BFloat16(10)) == Int32(10)
     @test Int64(BFloat16(10)) == Int64(10)
+    @test BFloat16(BigFloat(1)) == BFloat16(1)
+    @test BigFloat(BFloat16(1)) == BigFloat(1)
 end
 
 @testset "abi" begin
