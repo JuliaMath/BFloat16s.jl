@@ -14,44 +14,9 @@ import Base: isfinite, isnan, precision, iszero, eps,
     sinh, cosh, tanh, csch, sech, coth,
     asinh, acosh, atanh, acsch, asech, acoth,
     clamp, hypot,
-    bitstring, isinteger
+    bitstring
 
-
-import Printf
-
-# LLVM 11 added support for BFloat16 in the IR; Julia 1.11 added support for generating
-# code that uses the `bfloat` IR type, together with the necessary runtime functions.
-# However, not all LLVM targets support `bfloat`. If the target can store/load BFloat16s
-# (and supports synthesizing constants) we can use the `bfloat` IR type, otherwise we fall
-# back to defining a primitive type that will be represented as an `i16`. If, in addition,
-# the target supports BFloat16 arithmetic, we can use LLVM intrinsics.
-# - x86: storage and arithmetic support in LLVM 15
-# - aarch64: storage support in LLVM 17
-const llvm_storage = if isdefined(Core, :BFloat16)
-    if Sys.ARCH in [:x86_64, :i686] && Base.libllvm_version >= v"15"
-        true
-    elseif Sys.ARCH == :aarch64 && Base.libllvm_version >= v"17"
-        true
-    else
-        false
-    end
-else
-    false
-end
-const llvm_arithmetic = if llvm_storage
-    using Core: BFloat16
-    if Sys.ARCH in [:x86_64, :i686] && Base.libllvm_version >= v"15"
-        true
-    else
-        false
-    end
-else
-    primitive type BFloat16 <: AbstractFloat 16 end
-    false
-end
-
-Base.reinterpret(::Type{Unsigned}, x::BFloat16) = reinterpret(UInt16, x)
-Base.reinterpret(::Type{Signed}, x::BFloat16) = reinterpret(Int16, x)
+primitive type BFloat16 <: AbstractFloat 16 end
 
 # Floating point property queries
 for f in (:sign_mask, :exponent_mask, :exponent_one,
@@ -176,22 +141,16 @@ end
 # accept Irrational
 BFloat16s.BFloat16(x::Irrational) = BFloat16(Float32(x))
 
+# Truncation to integer types
+Base.unsafe_trunc(T::Type{<:Integer}, x::BFloat16) = unsafe_trunc(T, Float32(x))
+Base.trunc(::Type{T}, x::BFloat16) where {T<:Integer} = trunc(T, Float32(x))
+
 # Basic arithmetic
-# Basic arithmetic
-if llvm_arithmetic
-    +(x::T, y::T) where {T<:BFloat16} = Base.add_float(x, y)
-    -(x::T, y::T) where {T<:BFloat16} = Base.sub_float(x, y)
-    *(x::T, y::T) where {T<:BFloat16} = Base.mul_float(x, y)
-    /(x::T, y::T) where {T<:BFloat16} = Base.div_float(x, y)
-    -(x::BFloat16) = Base.neg_float(x)
-    ^(x::BFloat16, y::BFloat16) = BFloat16(Float32(x)^Float32(y))
-else
-    for f in (:+, :-, :*, :/, :^)
-        @eval ($f)(x::BFloat16, y::BFloat16) = BFloat16($(f)(Float32(x), Float32(y)))
-    end
-    -(x::BFloat16) = reinterpret(BFloat16, reinterpret(Unsigned, x) ⊻ sign_mask(BFloat16))
+for f in (:+, :-, :*, :/, :^)
+    @eval ($f)(x::BFloat16, y::BFloat16) = BFloat16($(f)(Float32(x), Float32(y)))
 end
-^(x::BFloat16, y::Integer) = BFloat16(Float32(x)^y)
+-(x::BFloat16) = reinterpret(BFloat16, reinterpret(UInt16, x) ⊻ sign_mask(BFloat16))
+^(x::BFloat16, y::Integer) = BFloat16(^(Float32(x), y))
 
 for F in (:abs, :sqrt, :exp, :log, :log2, :log10,
           :sin, :cos, :tan, :asin, :acos, :atan,
@@ -237,67 +196,6 @@ end
 # Wide multiplication
 Base.widemul(x::BFloat16, y::BFloat16) = Float32(x) * Float32(y)
 
-# Truncation to integer types
-if llvm_arithmetic
-    for Ti in (Int8, Int16, Int32, Int64)
-        @eval begin
-            Base.unsafe_trunc(::Type{$Ti}, x::BFloat16) = Base.fptosi($Ti, x)
-        end
-    end
-    for Ti in (UInt8, UInt16, UInt32, UInt64)
-        @eval begin
-            Base.unsafe_trunc(::Type{$Ti}, x::BFloat16) = Base.fptoui($Ti, x)
-        end
-    end
-else
-    Base.unsafe_trunc(T::Type{<:Integer}, x::BFloat16) = unsafe_trunc(T, Float32(x))
-end
-for Ti in (Int8, Int16, Int32, Int64, Int128, UInt8, UInt16, UInt32, UInt64, UInt128)
-    if Ti <: Unsigned || sizeof(Ti) < 2
-        # Here `BFloat16(typemin(Ti))-1` is exact, so we can compare the lower-bound
-        # directly. `BFloat16(typemax(Ti))+1` is either always exactly representable, or
-        # rounded to `Inf` (e.g. when `Ti==UInt128 && BFloat16==Float32`).
-        @eval begin
-            function Base.trunc(::Type{$Ti}, x::BFloat16)
-                if $(BFloat16(typemin(Ti)) - one(BFloat16)) < x < $(BFloat16(typemax(Ti)) + one(BFloat16))
-                    return Base.unsafe_trunc($Ti, x)
-                else
-                    throw(InexactError(:trunc, $Ti, x))
-                end
-            end
-            function (::Type{$Ti})(x::BFloat16)
-                if ($(BFloat16(typemin(Ti))) <= x <= $(BFloat16(typemax(Ti)))) && isinteger(x)
-                    return Base.unsafe_trunc($Ti, x)
-                else
-                    throw(InexactError($(Expr(:quote, Ti.name.name)), $Ti, x))
-                end
-            end
-        end
-    else
-        # Here `eps(BFloat16(typemin(Ti))) > 1`, so the only value which can be
-        # truncated to `BFloat16(typemin(Ti)` is itself. Similarly,
-        # `BFloat16(typemax(Ti))` is inexact and will be rounded up. This assumes that
-        # `BFloat16(typemin(Ti)) > -Inf`, which is true for these types, but not for
-        # `Float16` or larger integer types.
-        @eval begin
-            function Base.trunc(::Type{$Ti}, x::BFloat16)
-                if $(BFloat16(typemin(Ti))) <= x < $(BFloat16(typemax(Ti)))
-                    return unsafe_trunc($Ti, x)
-                else
-                    throw(InexactError(:trunc, $Ti, x))
-                end
-            end
-            function (::Type{$Ti})(x::BFloat16)
-                if ($(BFloat16(typemin(Ti))) <= x < $(BFloat16(typemax(Ti)))) && isinteger(x)
-                    return unsafe_trunc($Ti, x)
-                else
-                    throw(InexactError($(Expr(:quote, Ti.name.name)), $Ti, x))
-                end
-            end
-        end
-    end
-end
-
 # Showing
 function Base.show(io::IO, x::BFloat16)
     hastypeinfo = BFloat16 === get(io, :typeinfo, Any)
@@ -307,11 +205,10 @@ function Base.show(io::IO, x::BFloat16)
         print(io, "NaNB16")
     else
         hastypeinfo || print(io, "BFloat16(")
-        show(IOContext(io, :typeinfo => Float32), Float32(x))
+        show(IOContext(io, :typeinfo=>Float32), Float32(x))
         hastypeinfo || print(io, ")")
     end
 end
-Printf.tofloat(x::BFloat16) = Float32(x)
 
 # Random
 import Random: rand, randn, randexp, AbstractRNG, Sampler
@@ -326,42 +223,34 @@ exponent(x::BFloat16) = exponent(Float32(x))
 bitstring(x::BFloat16) = bitstring(reinterpret(UInt16, x))
 
 # next/prevfloat
-function Base.nextfloat(f::BFloat16, d::Integer)
-    F = typeof(f)
-    fumax = reinterpret(Unsigned, F(Inf))
-    U = typeof(fumax)
-
-    isnan(f) && return f
-    fi = reinterpret(Signed, f)
-    fneg = fi < 0
-    fu = unsigned(fi & typemax(fi))
-
-    dneg = d < 0
-    da = uabs(d)
-    if da > typemax(U)
-        fneg = dneg
-        fu = fumax
-    else
-        du = da % U
-        if fneg ⊻ dneg
-            if du > fu
-                fu = min(fumax, du - fu)
-                fneg = !fneg
-            else
-                fu = fu - du
-            end
-        else
-            if fumax - fu < du
-                fu = fumax
-            else
-                fu = fu + du
-            end
+function Base.nextfloat(x::BFloat16)
+    if isfinite(x)
+        ui = reinterpret(UInt16,x)
+        if ui < 0x8000  # positive numbers
+            return reinterpret(BFloat16,ui+0x0001)
+        elseif ui == 0x8000     # =-zero(T)
+            return reinterpret(BFloat16,0x0001)
+        else                # negative numbers
+            return reinterpret(BFloat16,ui-0x0001)
         end
+    else    # NaN / Inf case
+        return x
     end
-    if fneg
-        fu |= sign_mask(F)
+end
+
+function Base.prevfloat(x::BFloat16)
+    if isfinite(x)
+        ui = reinterpret(UInt16,x)
+        if ui == 0x0000     # =zero(T)
+            return reinterpret(BFloat16,0x8001)
+        elseif ui < 0x8000  # positive numbers
+            return reinterpret(BFloat16,ui-0x0001)
+        else                # negative numbers
+            return reinterpret(BFloat16,ui+0x0001)
+        end
+    else    # NaN / Inf case
+        return x
     end
-    reinterpret(F, fu)
 end
 
 # math functions
