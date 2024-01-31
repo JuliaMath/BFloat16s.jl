@@ -11,11 +11,20 @@ experiments.
 
 # Usage
 
-This package exports the BFloat16 data type. This datatype should behave
-just like any builtin floating point type (e.g. you can construct it from
-other floating point types - e.g. `BFloat16(1.0)`). Many predicates, 
-conversion, structural and mathematical functions are supported:
+This package exports the BFloat16 data type. This datatype behaves just like any built-in floating point type
+
+```julia
+julia> using BFloat16s
+
+julia> a = BFloat16(2)
+BFloat16(2.0)
+
+julia> sqrt(a)
+BFloat16(1.4140625)
 ```
+
+Many predicates,  conversion, structural and mathematical functions are supported:
+```julia
  Int16, Int32, Int64, Float16, Float32, Float64, +, -, *, /, ^, ==, <, <=, >=, >, !=, inv,
  isfinite, isnan, precision, iszero, eps, typemin, typemax, floatmin, floatmax,
  sign_mask, exponent_mask, significand_mask, exponent_bits, significand_bits, exponent_bias,
@@ -25,6 +34,34 @@ conversion, structural and mathematical functions are supported:
  sinh, cosh, tanh, csch, sech, coth, asinh, acosh, atanh, acsch, asech, acoth,
  round, trunc, floor, ceil, abs, abs2, sqrt, cbrt, clamp, hypot, bitstring
 ```
+
+However, in practice you may hit a `MethodError` indicating that this package does not implement
+some method for `BFloat16` although it should. Please raise an issue so that we can
+close that gap in support.
+
+### solving a linear equation system
+
+```julia
+julia> A = randn(BFloat16,3,3)
+3×3 Matrix{BFloat16}:
+  1.46875   -1.20312   -1.0
+  0.257812  -0.671875  -0.929688
+ -0.410156  -1.75      -0.0162354
+
+julia> b = randn(BFloat16,3)
+3-element Vector{BFloat16}:
+ -0.26367188
+ -0.14160156
+  0.77734375
+
+julia> A\b
+3-element Vector{BFloat16}:
+ -0.24902344
+ -0.38671875
+  0.36328125
+```
+
+## `LowPrecArray` for mixed-precision Float32/BFloat16 matrix multiplications
 
 In addition, this package provides the `LowPrecArray` type. This array is 
 supposed to emulate the kind of matmul operation that TPUs do well
@@ -66,6 +103,5 @@ julia> Float64.(A.storage)^2
  1.22742  1.90498  1.70653  1.63928  2.18076
 ```
 
-Note that the low precision result differs from (is less precise than) the
-result computed in Float32 arithmetic (which matches the result in Float64
+Note that the low precision result differs from (is less precise than) the result computed in Float32 arithmetic (which matches the result in Float64
 precision).
