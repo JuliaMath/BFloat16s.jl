@@ -175,5 +175,18 @@ end
   @test a-1+1 == a      # but -1 can
 end
 
+@testset "rand sampling" begin
+  Random.seed(123)
+  mi, ma = extrema(rand(BFloat16, 1_000_000))
+  
+  # zero should be the lowest BFloat16 sampled
+  @test mi === zero(BFloat16)
+
+  # prevfloat(one(BFloat16)) cannot be sampled bc
+  # prevfloat(BFloat16(2)) - 1 is _two_ before one(BFloat16)
+  # (a statistical flaw of the [1,2)-1 sampling)
+  @test ma === prevfloat(one(BFloat16), 2)
+end
+
 include("structure.jl")
 include("mathfuncs.jl")
