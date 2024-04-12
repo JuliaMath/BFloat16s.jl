@@ -176,7 +176,7 @@ end
 end
 
 @testset "rand sampling" begin
-  Random.seed(123)
+  Random.seed!(123)
   mi, ma = extrema(rand(BFloat16, 1_000_000))
   
   # zero should be the lowest BFloat16 sampled
