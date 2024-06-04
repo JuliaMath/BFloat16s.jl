@@ -220,6 +220,10 @@ else
     end
 end
 
+# BigFloat conversion
+BFloat16(x::BigFloat) = BFloat16(Float32(x))
+Base.BigFloat(x::BFloat16) = BigFloat(Float32(x))
+
 # Basic arithmetic
 if llvm_arithmetic
     +(x::T, y::T) where {T<:BFloat16} = Base.add_float(x, y)
