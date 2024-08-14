@@ -22,7 +22,7 @@ import Printf
 # However, not all LLVM targets support `bfloat`. If the target can store/load BFloat16s
 # (and supports synthesizing constants) we can use the `bfloat` IR type, otherwise we fall
 # back to defining a primitive type that will be represented as an `i16`. If, in addition,
-# the target supports BFloat16 arithmetic, we can use LLVM intrinsics.
+# the target supports BFloat16 arithmetic, we can use LLVM instructions.
 # - x86: storage and arithmetic support in LLVM 15
 # - aarch64: storage support in LLVM 17
 const llvm_storage = if isdefined(Core, :BFloat16)
@@ -39,6 +39,8 @@ end
 const llvm_arithmetic = if llvm_storage
     using Core: BFloat16
     if Sys.ARCH in [:x86_64, :i686] && Base.libllvm_version >= v"15"
+        true
+    elseif Sys.ARCH == :aarch64 && Base.libllvm_version >= v"19"
         true
     else
         false
