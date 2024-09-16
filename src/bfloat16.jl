@@ -352,17 +352,7 @@ Printf.tofloat(x::BFloat16) = Float32(x)
 
 # Random
 import Random: rand, randn, randexp, AbstractRNG, Sampler
-
-"""Sample a BFloat16 from [0,1) by setting random mantissa
-bits for one(BFloat16) to obtain [1,2) (where floats are uniformly
-distributed) then subtract 1 for [0,1)."""
-function rand(rng::AbstractRNG, ::Sampler{BFloat16})
-    u = reinterpret(UInt16, one(BFloat16))
-    # shift random bits into BFloat16 mantissa (1 sign + 8 exp bits = 9)
-    u |= rand(rng, UInt16) >> 9                     # u in [1,2)
-    return reinterpret(BFloat16, u) - one(BFloat16) # -1 for [0,1)
-end
-
+rand(rng::AbstractRNG, ::Sampler{BFloat16}) = convert(BFloat16, rand(rng))
 randn(rng::AbstractRNG, ::Type{BFloat16}) = convert(BFloat16, randn(rng))
 randexp(rng::AbstractRNG, ::Type{BFloat16}) = convert(BFloat16, randexp(rng))
 
