@@ -1,15 +1,40 @@
-# BFloat16s
+# BFloat16s.jl
+[![MIT license](http://img.shields.io/badge/license-MIT-brightgreen.svg)](http://opensource.org/licenses/MIT) 
 
-This package defines the [BFloat16 data type](https://en.wikipedia.org/wiki/Bfloat16_floating-point_format).
-The only currently available hardware implementation of this datatype are
-Google's [Cloud TPUs](https://en.wikipedia.org/wiki/Tensor_processing_unit).
-As such, this package is suitable to evaluate whether using TPUs would cause
-precision problems for any particular algorithm, even without access to TPU
+This package defines the [BFloat16 data type](https://en.wikipedia.org/wiki/Bfloat16_floating-point_format),
+a floating-point format with 1 sign bit, 8 exponent bits and 7 mantissa bits.
+
+Hardware implementation of this datatype is available in Google's
+[Cloud TPUs](https://en.wikipedia.org/wiki/Tensor_processing_unit) as well as
+in a growing number of CPUs, GPUs, and more specialized processors. See the
+[wikipedia entry](https://en.wikipedia.org/wiki/Bfloat16_floating-point_format)
+for more information.
+
+This package is suitable to evaluate whether using BFloat16 would cause
+precision problems for any particular algorithm, even without access to supporting
 hardware. Note that this package is designed for functionality, not performance,
 so this package should be used for precision experiments only, not performance
 experiments.
 
-# Usage
+## Usage
+
+This package exports the `BFloat16` data type. This datatype behaves
+just like any built-in floating-point type
+
+```julia
+julia> using BFloat16s
+
+julia> a = BFloat16(2)
+BFloat16(2.0)
+
+julia> sqrt(a)
+BFloat16(1.4140625)
+```
+
+However, in practice you may hit a `MethodError` indicating that this package does not implement
+a method for `BFloat16` although it should. In this case, please raise an issue so that we can
+close the gap in support compared to other low-precision types like `Float16`. The usage
+of `BFloat16` should be as smooth as the following example, solving a linear equation system
 
 This package exports the BFloat16 data type. This datatype should behave
 just like any builtin floating point type (e.g. you can construct it from
@@ -32,7 +57,8 @@ supposed to emulate the kind of matmul operation that TPUs do well
 are peformed in Float32 (as they would be on a TPU) while matrix multiplies
 are performed in BFloat16 with Float32 accumulates, e.g.
 
-```
+
+```julia
 julia> A = LowPrecArray(rand(Float32, 5, 5))
 5×5 LowPrecArray{2,Array{Float32,2}}:
  0.252818  0.619702   0.553199  0.75225   0.30819
@@ -66,6 +92,7 @@ julia> Float64.(A.storage)^2
  1.22742  1.90498  1.70653  1.63928  2.18076
 ```
 
-Note that the low precision result differs from (is less precise than) the
+Note that the low-precision result differs from (is less precise than) the
 result computed in Float32 arithmetic (which matches the result in Float64
 precision).
+

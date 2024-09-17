@@ -2,11 +2,11 @@ import Base: isfinite, isnan, precision, iszero, eps,
     typemin, typemax, floatmin, floatmax,
     sign_mask, exponent_mask, significand_mask,
     exponent_bits, significand_bits, exponent_bias,
-    exponent_one, exponent_half,
+    exponent_one, exponent_half, leading_zeros,
     signbit, exponent, significand, frexp, ldexp,
     round, Int16, Int32, Int64,
     +, -, *, /, ^, ==, <, <=, >=, >, !=, inv,
-    abs, abs2, sqrt, cbrt, 
+    abs, abs2, uabs, sqrt, cbrt,
     exp, exp2, exp10, expm1,
     log, log2, log10, log1p,
     sin, cos, tan, csc, sec, cot,
@@ -14,34 +14,83 @@ import Base: isfinite, isnan, precision, iszero, eps,
     sinh, cosh, tanh, csch, sech, coth,
     asinh, acosh, atanh, acsch, asech, acoth,
     clamp, hypot,
-    bitstring
+    bitstring, isinteger
 
-primitive type BFloat16 <: AbstractFloat 16 end
+import Printf
+
+# LLVM 11 added support for BFloat16 in the IR; Julia 1.11 added support for generating
+# code that uses the `bfloat` IR type, together with the necessary runtime functions.
+# However, not all LLVM targets support `bfloat`. If the target can store/load BFloat16s
+# (and supports synthesizing constants) we can use the `bfloat` IR type, otherwise we fall
+# back to defining a primitive type that will be represented as an `i16`. If, in addition,
+# the target supports BFloat16 arithmetic, we can use LLVM instructions.
+# - x86: storage and arithmetic support in LLVM 15
+# - aarch64: storage support in LLVM 17
+const llvm_storage = if isdefined(Core, :BFloat16)
+    if Sys.ARCH in [:x86_64, :i686] && Base.libllvm_version >= v"15"
+        true
+    elseif Sys.ARCH == :aarch64 && Base.libllvm_version >= v"17"
+        true
+    else
+        false
+    end
+else
+    false
+end
+const llvm_arithmetic = if llvm_storage
+    using Core: BFloat16
+    if Sys.ARCH in [:x86_64, :i686] && Base.libllvm_version >= v"15"
+        true
+    elseif Sys.ARCH == :aarch64 && Base.libllvm_version >= v"19"
+        true
+    else
+        false
+    end
+else
+    primitive type BFloat16 <: AbstractFloat 16 end
+    false
+end
+
+Base.reinterpret(::Type{Unsigned}, x::BFloat16) = reinterpret(UInt16, x)
+Base.reinterpret(::Type{Signed}, x::BFloat16) = reinterpret(Int16, x)
 
 # Floating point property queries
 for f in (:sign_mask, :exponent_mask, :exponent_one,
-            :exponent_half, :significand_mask)
+          :exponent_half, :significand_mask)
     @eval $(f)(::Type{BFloat16}) = UInt16($(f)(Float32) >> 16)
 end
-
 Base.exponent_bias(::Type{BFloat16}) = 127
 Base.exponent_bits(::Type{BFloat16}) = 8
 Base.significand_bits(::Type{BFloat16}) = 7
-Base.signbit(x::BFloat16) = (reinterpret(UInt16, x) & 0x8000) !== 0x0000
+Base.signbit(x::BFloat16) = (reinterpret(Unsigned, x) & 0x8000) !== 0x0000
 
 function Base.significand(x::BFloat16)
-    result = abs_significand(x)
-    ifelse(signbit(x), -result, result)
+    xu = reinterpret(Unsigned, x)
+    xs = xu & ~sign_mask(BFloat16)
+    xs >= exponent_mask(BFloat16) && return x # NaN or Inf
+    if xs <= (~exponent_mask(BFloat16) & ~sign_mask(BFloat16)) # x is subnormal
+        xs == 0 && return x # +-0
+        m = unsigned(leading_zeros(xs) - exponent_bits(BFloat16))
+        xs <<= m
+        xu = xs | (xu & sign_mask(BFloat16))
+    end
+    xu = (xu & ~exponent_mask(BFloat16)) | exponent_one(BFloat16)
+    return reinterpret(BFloat16, xu)
 end
 
-@inline function abs_significand(x::BFloat16)
-    usig = Base.significand_mask(BFloat16) & reinterpret(UInt16, x)
-    isig = Int16(usig)
-    1 + isig / BFloat16(2)^7
-end
+Base.exponent(x::BFloat16) =
+    ((reinterpret(Unsigned, x) & Base.exponent_mask(BFloat16)) >> 7) - Base.exponent_bias(BFloat16)
 
-Base.exponent(x::BFloat16) = 
-    ((reinterpret(UInt16, x) & Base.exponent_mask(BFloat16)) >> 7) - Base.exponent_bias(BFloat16)
+function Base.decompose(x::BFloat16)::NTuple{3,Int}
+    isnan(x) && return 0, 0, 0
+    isinf(x) && return ifelse(x < 0, -1, 1), 0, 0
+    n = reinterpret(UInt16, x)
+    s = (n & 0x007f) % Int16
+    e = ((n & 0x7f80) >> 7) % Int
+    s |= Int16(e != 0) << 7
+    d = ifelse(signbit(x), -1, 1)
+    s, e - 134 + (e == 0), d
+end
 
 function Base.frexp(x::BFloat16)
    xp = exponent(x) + 1
@@ -57,21 +106,29 @@ function Base.rem(x::BFloat16, ::Type{T}) where {T<:Integer}
     T(trunc(x))
 end
 
-iszero(x::BFloat16) = reinterpret(UInt16, x) & ~sign_mask(BFloat16) == 0x0000
-isfinite(x::BFloat16) = (reinterpret(UInt16,x) & exponent_mask(BFloat16)) != exponent_mask(BFloat16)
-isnan(x::BFloat16) = (reinterpret(UInt16,x) & ~sign_mask(BFloat16)) > exponent_mask(BFloat16)
+iszero(x::BFloat16) = reinterpret(Unsigned, x) & ~sign_mask(BFloat16) == 0x0000
+isfinite(x::BFloat16) = (reinterpret(Unsigned,x) & exponent_mask(BFloat16)) != exponent_mask(BFloat16)
+isnan(x::BFloat16) = (reinterpret(Unsigned,x) & ~sign_mask(BFloat16)) > exponent_mask(BFloat16)
 precision(::Type{BFloat16}) = 8
 eps(::Type{BFloat16}) = Base.bitcast(BFloat16, 0x3c00)
 
-round(x::BFloat16, r::RoundingMode{:Up}) = BFloat16(ceil(Float32(x)))
-round(x::BFloat16, r::RoundingMode{:Down}) = BFloat16(floor(Float32(x)))
-round(x::BFloat16, r::RoundingMode{:Nearest}) = BFloat16(round(Float32(x)))
+## Rounding ##
+if llvm_arithmetic
+    round(x::BFloat16, ::RoundingMode{:ToZero})  = Base.trunc_llvm(x)
+    round(x::BFloat16, ::RoundingMode{:Down})    = Base.floor_llvm(x)
+    round(x::BFloat16, ::RoundingMode{:Up})      = Base.ceil_llvm(x)
+    round(x::BFloat16, ::RoundingMode{:Nearest}) = Base.rint_llvm(x)
+else
+    round(x::BFloat16, r::RoundingMode{:ToZero}) = BFloat16(trunc(Float32(x)))
+    round(x::BFloat16, r::RoundingMode{:Down}) = BFloat16(floor(Float32(x)))
+    round(x::BFloat16, r::RoundingMode{:Up}) = BFloat16(ceil(Float32(x)))
+    round(x::BFloat16, r::RoundingMode{:Nearest}) = BFloat16(round(Float32(x)))
+end
+# round(::Type{Signed},   x::BFloat16, r::RoundingMode) = round(Int, x, r)
+# round(::Type{Unsigned}, x::BFloat16, r::RoundingMode) = round(UInt, x, r)
+# round(::Type{Integer},  x::BFloat16, r::RoundingMode) = round(Int, x, r)
 
-Base.trunc(bf::BFloat16) = signbit(bf) ? ceil(bf) : floor(bf) 
-
-Int64(x::BFloat16) = Int64(Float32(x))
-Int32(x::BFloat16) = Int32(Float32(x))
-Int16(x::BFloat16) = Int16(Float32(x))
+Base.trunc(bf::BFloat16) = signbit(bf) ? ceil(bf) : floor(bf)
 
 ## floating point traits ##
 """
@@ -91,6 +148,7 @@ typemin(::Type{BFloat16}) = -InfB16
 typemax(::Type{BFloat16}) = InfB16
 floatmax(::Type{BFloat16}) = reinterpret(BFloat16, 0x7f7f)
 floatmin(::Type{BFloat16}) = reinterpret(BFloat16, 0x0080)
+Base.maxintfloat(::Type{BFloat16}) = reinterpret(BFloat16,0x4380) # = BFloat16(256)
 
 # Truncation from Float32
 Base.uinttype(::Type{BFloat16}) = UInt16
@@ -98,44 +156,71 @@ Base.trunc(::Type{BFloat16}, x::Float32) = reinterpret(BFloat16,
         (reinterpret(UInt32, x) >> 16) % UInt16
     )
 
-# Conversion from Float32
-function BFloat16(x::Float32)
-    isnan(x) && return NaNB16
-    # Round to nearest even (matches TensorFlow and our convention for
-    # rounding to lower precision floating point types).
-    h = reinterpret(UInt32, x)
-    h += 0x7fff + ((h >> 16) & 1)
-    return reinterpret(BFloat16, (h >> 16) % UInt16)
-end
+if llvm_arithmetic
+    BFloat16(x::Float32) = Base.fptrunc(BFloat16, x)
+    BFloat16(x::Float64) = Base.fptrunc(BFloat16, x)
 
-# Conversion from Float64
-function BFloat16(x::Float64)
-    BFloat16(Float32(x))
-end
+    # XXX: can LLVM do this natively?
+    BFloat16(x::Float16) = BFloat16(Float32(x))
+else
+    # Conversion from Float32
+    function BFloat16(x::Float32)
+        isnan(x) && return NaNB16
+        # Round to nearest even (matches TensorFlow and our convention for
+        # rounding to lower precision floating point types).
+        h = reinterpret(UInt32, x)
+        h += 0x7fff + ((h >> 16) & 1)
+        return reinterpret(BFloat16, (h >> 16) % UInt16)
+    end
 
-# Conversion from Float16
-function BFloat16(x::Float16)
-    BFloat16(Float32(x))
+    # Conversion from Float64
+    function BFloat16(x::Float64)
+        BFloat16(Float32(x))
+    end
+
+    # Conversion from Float16
+    function BFloat16(x::Float16)
+        BFloat16(Float32(x))
+    end
 end
 
 # Conversion from Integer
-function BFloat16(x::Integer)
-    convert(BFloat16, convert(Float32, x))
+if llvm_arithmetic
+    for st in (Int8, Int16, Int32, Int64)
+        @eval begin
+            BFloat16(x::($st)) = Base.sitofp(BFloat16, x)
+        end
+    end
+    for ut in (Bool, UInt8, UInt16, UInt32, UInt64)
+        @eval begin
+            BFloat16(x::($ut)) = Base.uitofp(BFloat16, x)
+        end
+    end
+else
+    BFloat16(x::Integer) = convert(BFloat16, convert(Float32, x))
 end
+# TODO: optimize
+BFloat16(x::UInt128) = convert(BFloat16, Float64(x))
+BFloat16(x::Int128)  = convert(BFloat16, Float64(x))
 
 # Conversion to Float16
 function Base.Float16(x::BFloat16)
     Float16(Float32(x))
 end
 
-# Expansion to Float32
-function Base.Float32(x::BFloat16)
-    reinterpret(Float32, UInt32(reinterpret(UInt16, x)) << 16)
-end
+if llvm_arithmetic
+    Base.Float32(x::BFloat16) = Base.fpext(Float32, x)
+    Base.Float64(x::BFloat16) = Base.fpext(Float64, x)
+else
+    # Expansion to Float32
+    function Base.Float32(x::BFloat16)
+        reinterpret(Float32, UInt32(reinterpret(Unsigned, x)) << 16)
+    end
 
-# Expansion to Float64
-function Base.Float64(x::BFloat16)
-    Float64(Float32(x))
+    # Expansion to Float64
+    function Base.Float64(x::BFloat16)
+        Float64(Float32(x))
+    end
 end
 
 # accept Irrational
@@ -145,20 +230,25 @@ BFloat16s.BFloat16(x::Irrational) = BFloat16(Float32(x))
 Base.unsafe_trunc(T::Type{<:Integer}, x::BFloat16) = unsafe_trunc(T, Float32(x))
 Base.trunc(::Type{T}, x::BFloat16) where {T<:Integer} = trunc(T, Float32(x))
 
-# Basic arithmetic
-for f in (:+, :-, :*, :/, :^)
-    @eval ($f)(x::BFloat16, y::BFloat16) = BFloat16($(f)(Float32(x), Float32(y)))
-end
--(x::BFloat16) = reinterpret(BFloat16, reinterpret(UInt16, x) ⊻ sign_mask(BFloat16))
-^(x::BFloat16, y::Integer) = BFloat16(^(Float32(x), y))
+# BigFloat conversion
+BFloat16(x::BigFloat) = BFloat16(Float32(x))
+Base.BigFloat(x::BFloat16) = BigFloat(Float32(x))
 
-for F in (:abs, :sqrt, :exp, :log, :log2, :log10,
-          :sin, :cos, :tan, :asin, :acos, :atan,
-          :sinh, :cosh, :tanh, :asinh, :acosh, :atanh)
-    @eval begin
-        $F(x::BFloat16) = BFloat16($F(Float32(x)))
+# Basic arithmetic
+if llvm_arithmetic
+    +(x::T, y::T) where {T<:BFloat16} = Base.add_float(x, y)
+    -(x::T, y::T) where {T<:BFloat16} = Base.sub_float(x, y)
+    *(x::T, y::T) where {T<:BFloat16} = Base.mul_float(x, y)
+    /(x::T, y::T) where {T<:BFloat16} = Base.div_float(x, y)
+    -(x::BFloat16) = Base.neg_float(x)
+    ^(x::BFloat16, y::BFloat16) = BFloat16(Float32(x)^Float32(y))
+else
+    for f in (:+, :-, :*, :/, :^)
+        @eval ($f)(x::BFloat16, y::BFloat16) = BFloat16($(f)(Float32(x), Float32(y)))
     end
+    -(x::BFloat16) = reinterpret(BFloat16, reinterpret(Unsigned, x) ⊻ sign_mask(BFloat16))
 end
+^(x::BFloat16, y::Integer) = BFloat16(Float32(x)^y)
 
 const ZeroBFloat16 = BFloat16(0.0f0)
 const OneBFloat16 = BFloat16(1.0f0)
@@ -169,8 +259,8 @@ inv(x::BFloat16) = one(BFloat16) / x
 
 # Floating point comparison
 function ==(x::BFloat16, y::BFloat16)
-    ix = reinterpret(UInt16, x)
-    iy = reinterpret(UInt16, y)
+    ix = reinterpret(Unsigned, x)
+    iy = reinterpret(Unsigned, y)
     # NaNs (isnan(x) || isnan(y))
     if (ix|iy)&~sign_mask(BFloat16) > exponent_mask(BFloat16)
         return false
@@ -194,7 +284,68 @@ for t in (Int8, Int16, Int32, Int64, Int128, UInt8, UInt16, UInt32, UInt64, UInt
 end
 
 # Wide multiplication
-Base.widemul(x::BFloat16, y::BFloat16) = Float32(x) * Float32(y)
+Base.widemul(x::BFloat16, y::BFloat16) = widen(x) * widen(y)
+
+# Truncation to integer types
+if llvm_arithmetic
+    for Ti in (Int8, Int16, Int32, Int64)
+        @eval begin
+            Base.unsafe_trunc(::Type{$Ti}, x::BFloat16) = Base.fptosi($Ti, x)
+        end
+    end
+    for Ti in (UInt8, UInt16, UInt32, UInt64)
+        @eval begin
+            Base.unsafe_trunc(::Type{$Ti}, x::BFloat16) = Base.fptoui($Ti, x)
+        end
+    end
+else
+    Base.unsafe_trunc(T::Type{<:Integer}, x::BFloat16) = unsafe_trunc(T, Float32(x))
+end
+for Ti in (Int8, Int16, Int32, Int64, Int128, UInt8, UInt16, UInt32, UInt64, UInt128)
+    if Ti <: Unsigned || sizeof(Ti) < 2
+        # Here `BFloat16(typemin(Ti))-1` is exact, so we can compare the lower-bound
+        # directly. `BFloat16(typemax(Ti))+1` is either always exactly representable, or
+        # rounded to `Inf` (e.g. when `Ti==UInt128 && BFloat16==Float32`).
+        @eval begin
+            function Base.trunc(::Type{$Ti}, x::BFloat16)
+                if $(BFloat16(typemin(Ti))-one(BFloat16)) < x < $(BFloat16(typemax(Ti))+one(BFloat16))
+                    return Base.unsafe_trunc($Ti,x)
+                else
+                    throw(InexactError(:trunc, $Ti, x))
+                end
+            end
+            function (::Type{$Ti})(x::BFloat16)
+                if ($(BFloat16(typemin(Ti))) <= x <= $(BFloat16(typemax(Ti)))) && isinteger(x)
+                    return Base.unsafe_trunc($Ti,x)
+                else
+                    throw(InexactError($(Expr(:quote,Ti.name.name)), $Ti, x))
+                end
+            end
+        end
+    else
+        # Here `eps(BFloat16(typemin(Ti))) > 1`, so the only value which can be
+        # truncated to `BFloat16(typemin(Ti)` is itself. Similarly,
+        # `BFloat16(typemax(Ti))` is inexact and will be rounded up. This assumes that
+        # `BFloat16(typemin(Ti)) > -Inf`, which is true for these types, but not for
+        # `Float16` or larger integer types.
+        @eval begin
+            function Base.trunc(::Type{$Ti}, x::BFloat16)
+                if $(BFloat16(typemin(Ti))) <= x < $(BFloat16(typemax(Ti)))
+                    return unsafe_trunc($Ti,x)
+                else
+                    throw(InexactError(:trunc, $Ti, x))
+                end
+            end
+            function (::Type{$Ti})(x::BFloat16)
+                if ($(BFloat16(typemin(Ti))) <= x < $(BFloat16(typemax(Ti)))) && isinteger(x)
+                    return unsafe_trunc($Ti,x)
+                else
+                    throw(InexactError($(Expr(:quote,Ti.name.name)), $Ti, x))
+                end
+            end
+        end
+    end
+end
 
 # Showing
 function Base.show(io::IO, x::BFloat16)
@@ -209,48 +360,64 @@ function Base.show(io::IO, x::BFloat16)
         hastypeinfo || print(io, ")")
     end
 end
+Printf.tofloat(x::BFloat16) = Float32(x)
 
 # Random
 import Random: rand, randn, randexp, AbstractRNG, Sampler
-rand(rng::AbstractRNG, ::Sampler{BFloat16}) = convert(BFloat16, rand(rng))
-randn(rng::AbstractRNG, ::Type{BFloat16}) = convert(BFloat16, randn(rng))
-randexp(rng::AbstractRNG, ::Type{BFloat16}) = convert(BFloat16, randexp(rng))
-          
-# Exponent
-exponent(x::BFloat16) = exponent(Float32(x))
 
-# Bitstring
-bitstring(x::BFloat16) = bitstring(reinterpret(UInt16, x))
-
-# next/prevfloat
-function Base.nextfloat(x::BFloat16)
-    if isfinite(x)
-        ui = reinterpret(UInt16,x)
-        if ui < 0x8000  # positive numbers
-            return reinterpret(BFloat16,ui+0x0001)
-        elseif ui == 0x8000     # =-zero(T)
-            return reinterpret(BFloat16,0x0001)
-        else                # negative numbers
-            return reinterpret(BFloat16,ui-0x0001)
-        end
-    else    # NaN / Inf case
-        return x
-    end
+"""Sample a BFloat16 from [0,1) by setting random mantissa
+bits for one(BFloat16) to obtain [1,2) (where floats are uniformly
+distributed) then subtract 1 for [0,1)."""
+function rand(rng::AbstractRNG, ::Sampler{BFloat16})
+    u = reinterpret(UInt16, one(BFloat16))
+    # shift random bits into BFloat16 mantissa (1 sign + 8 exp bits = 9)
+    u |= rand(rng, UInt16) >> 9                     # u in [1,2)
+    return reinterpret(BFloat16, u) - one(BFloat16) # -1 for [0,1)
 end
 
-function Base.prevfloat(x::BFloat16)
-    if isfinite(x)
-        ui = reinterpret(UInt16,x)
-        if ui == 0x0000     # =zero(T)
-            return reinterpret(BFloat16,0x8001)
-        elseif ui < 0x8000  # positive numbers
-            return reinterpret(BFloat16,ui-0x0001)
-        else                # negative numbers
-            return reinterpret(BFloat16,ui+0x0001)
+randn(rng::AbstractRNG, ::Type{BFloat16}) = convert(BFloat16, randn(rng))
+randexp(rng::AbstractRNG, ::Type{BFloat16}) = convert(BFloat16, randexp(rng))
+
+# Bitstring
+bitstring(x::BFloat16) = bitstring(reinterpret(Unsigned, x))
+
+# next/prevfloat
+function Base.nextfloat(f::BFloat16, d::Integer)
+    F = typeof(f)
+    fumax = reinterpret(Unsigned, F(Inf))
+    U = typeof(fumax)
+
+    isnan(f) && return f
+    fi = reinterpret(Signed, f)
+    fneg = fi < 0
+    fu = unsigned(fi & typemax(fi))
+
+    dneg = d < 0
+    da = uabs(d)
+    if da > typemax(U)
+        fneg = dneg
+        fu = fumax
+    else
+        du = da % U
+        if fneg ⊻ dneg
+            if du > fu
+                fu = min(fumax, du - fu)
+                fneg = !fneg
+            else
+                fu = fu - du
+            end
+        else
+            if fumax - fu < du
+                fu = fumax
+            else
+                fu = fu + du
+            end
         end
-    else    # NaN / Inf case
-        return x
     end
+    if fneg
+        fu |= sign_mask(F)
+    end
+    reinterpret(F, fu)
 end
 
 # math functions
@@ -266,7 +433,7 @@ for F in (:abs, :abs2, :sqrt, :cbrt,
   end
 end
 
-Base.atan(y::BFloat16, x::BFloat16) = BFloat16(atan(Float32(y), Float32(x)))
+                        Base.atan(y::BFloat16, x::BFloat16) = BFloat16(atan(Float32(y), Float32(x)))
 Base.hypot(x::BFloat16, y::BFloat16) = BFloat16(hypot(Float32(x), Float32(y)))
 Base.hypot(x::BFloat16, y::BFloat16, z::BFloat16) = BFloat16(hypot(Float32(x), Float32(y), Float32(z)))
 Base.clamp(x::BFloat16, lo::BFloat16, hi::BFloat16) = BFloat16(clamp(Float32(x), Float32(lo), Float32(hi)))

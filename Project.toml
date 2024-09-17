@@ -1,13 +1,18 @@
 name = "BFloat16s"
 uuid = "ab4f0b2a-ad5b-11e8-123f-65d77653426b"
 authors = ["Keno Fischer <keno@alumni.harvard.edu>", "Jeffrey Sarnoff <jeffrey.sarnoff@gmail.com>"]
-version = "0.4.1"
+version = "0.5.1"
 
 [deps]
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
 julia = "1.6"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]

@@ -1,5 +1,7 @@
 using Test, BFloat16s, Printf, Random
 
+@info "Testing BFloat16s" BFloat16s.llvm_storage BFloat16s.llvm_arithmetic
+
 @testset "comparisons" begin
     @test BFloat16(1)   <  BFloat16(2)
     @test BFloat16(1f0) <  BFloat16(2f0)
@@ -25,6 +27,16 @@ end
     @test Float64(BFloat16(10)) == 10.0
     @test Int32(BFloat16(10)) == Int32(10)
     @test Int64(BFloat16(10)) == Int64(10)
+    @test BFloat16(BigFloat(1)) == BFloat16(1)
+    @test BigFloat(BFloat16(1)) == BigFloat(1)
+end
+
+@testset "abi" begin
+  f() = BFloat16(1)
+  @test f() == BFloat16(1)
+
+  g(x) = x+BFloat16(1)
+  @test g(BFloat16(2)) == BFloat16(3)
 end
 
 @testset "functions" begin
@@ -58,7 +70,7 @@ end
                        ("%.2a",    "0x1.3cp+0"),
                        ("%.2A",    "0X1.3CP+0")),
         num in (BFloat16(1.234),)
-        @test @eval(@sprintf($fmt, $num) == $val)
+        @eval @test @sprintf($fmt, $num) == $val
     end
     @test (@sprintf "%f" BFloat16(Inf)) == "Inf"
     @test (@sprintf "%f" BFloat16(NaN)) == "NaN"
@@ -73,7 +85,7 @@ end
                        ("%-+10.5g",    "+123.5    "),
                        ("%010.5g", "00000123.5")),
         num in (BFloat16(123.5),)
-        @test @eval(@sprintf($fmt, $num) == $val)
+        @eval @test @sprintf($fmt, $num) == $val
     end
     @test( @sprintf( "%10.5g", BFloat16(-123.5) ) == "    -123.5")
     @test( @sprintf( "%010.5g", BFloat16(-123.5) ) == "-0000123.5")
@@ -128,9 +140,55 @@ end
   @test isinf(nextfloat(BFloat16s.InfB16))
 
   @test isnan(prevfloat(BFloat16s.NaNB16))
-  @test isinf(prevfloat(BFloat16s.InfB16))
+end
+
+@testset "Decompose BFloat16" begin
+  for x in randn(100)
+    bf16 = BFloat16(x)
+    s,e,d = Base.decompose(bf16)
+    @test BFloat16(s*2.0^e/d) == bf16
+  end
+end
+
+
+@testset "Next/prevfloat(x,::Integer)" begin
+
+  x = one(BFloat16)
+  @test x == prevfloat(nextfloat(x,100),100)
+  @test x == nextfloat(prevfloat(x,100),100)
+
+  x = -one(BFloat16)
+  @test x == prevfloat(nextfloat(x,100),100)
+  @test x == nextfloat(prevfloat(x,100),100)
+
+  x = one(BFloat16)
+  @test nextfloat(x,5) == prevfloat(x,-5)
+  @test prevfloat(x,-5) == nextfloat(x,5)
+
+  @test isinf(nextfloat(floatmax(BFloat16),5))
+  @test prevfloat(floatmin(BFloat16),2^8) < 0
+  @test nextfloat(-floatmin(BFloat16),2^8) > 0
+end
+
+@testset "maxintfloat" begin
+  
+  a = maxintfloat(BFloat16)
+  @test a+1-1 == a-1    # the first +1 cannot be represented
+  @test a-1+1 == a      # but -1 can
+end
+
+@testset "rand sampling" begin
+  Random.seed!(123)
+  mi, ma = extrema(rand(BFloat16, 1_000_000))
+  
+  # zero should be the lowest BFloat16 sampled
+  @test mi === zero(BFloat16)
+
+  # prevfloat(one(BFloat16)) cannot be sampled bc
+  # prevfloat(BFloat16(2)) - 1 is _two_ before one(BFloat16)
+  # (a statistical flaw of the [1,2)-1 sampling)
+  @test ma === prevfloat(one(BFloat16), 2)
 end
 
 include("structure.jl")
 include("mathfuncs.jl")
-
