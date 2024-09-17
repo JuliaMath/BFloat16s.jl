@@ -433,7 +433,7 @@ for F in (:abs, :abs2, :sqrt, :cbrt,
   end
 end
 
-                        Base.atan(y::BFloat16, x::BFloat16) = BFloat16(atan(Float32(y), Float32(x)))
+Base.atan(y::BFloat16, x::BFloat16) = BFloat16(atan(Float32(y), Float32(x)))
 Base.hypot(x::BFloat16, y::BFloat16) = BFloat16(hypot(Float32(x), Float32(y)))
 Base.hypot(x::BFloat16, y::BFloat16, z::BFloat16) = BFloat16(hypot(Float32(x), Float32(y), Float32(z)))
 Base.clamp(x::BFloat16, lo::BFloat16, hi::BFloat16) = BFloat16(clamp(Float32(x), Float32(lo), Float32(hi)))
