@@ -363,8 +363,8 @@ from every BFloat16 in [1/2, 1) but only from every other
 in [1/4, 1/2), and every forth in [1/8, 1/4), etc. for a
 uniform distribution."""
 function rand(rng::AbstractRNG, ::Sampler{BFloat16})
-    # Float32(0x1.0p-8) is 2^-8 = eps(BFloat16)/2
-    return BFloat16(Float32(rand(rng, UInt8)) * Float32(0x1.0p-8))
+    # 0x1p-8 is 2^-8 = eps(BFloat16)/2
+    return rand(rng, UInt8) * BFloat16(0x1p-8)
 end
 
 randn(rng::AbstractRNG, ::Type{BFloat16}) = convert(BFloat16, randn(rng))
