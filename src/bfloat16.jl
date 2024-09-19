@@ -357,14 +357,14 @@ Printf.tofloat(x::BFloat16) = Float32(x)
 # Random
 import Random: rand, randn, randexp, AbstractRNG, Sampler
 
-"""Sample a BFloat16 from [0,1) by setting random mantissa
-bits for one(BFloat16) to obtain [1,2) (where floats are uniformly
-distributed) then subtract 1 for [0,1)."""
+"""Sample a BFloat16 from [0,1) by creating a random integer
+in 0, ... 255 and then scaling it into [0,1). This samples
+from every BFloat16 in [1/2, 1) but only from every other
+in [1/4, 1/2), and every forth in [1/8, 1/4), etc. for a
+uniform distribution."""
 function rand(rng::AbstractRNG, ::Sampler{BFloat16})
-    u = reinterpret(UInt16, one(BFloat16))
-    # shift random bits into BFloat16 mantissa (1 sign + 8 exp bits = 9)
-    u |= rand(rng, UInt16) >> 9                     # u in [1,2)
-    return reinterpret(BFloat16, u) - one(BFloat16) # -1 for [0,1)
+    # Float32(0x1.0p-8) is 2^-8 = eps(BFloat16)/2
+    return BFloat16(Float32(rand(rng, UInt8)) * Float32(0x1.0p-8))
 end
 
 randn(rng::AbstractRNG, ::Type{BFloat16}) = convert(BFloat16, randn(rng))
