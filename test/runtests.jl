@@ -184,10 +184,8 @@ end
   # zero should be the lowest BFloat16 sampled
   @test mi === zero(BFloat16)
 
-  # prevfloat(one(BFloat16)) cannot be sampled bc
-  # prevfloat(BFloat16(2)) - 1 is _two_ before one(BFloat16)
-  # (a statistical flaw of the [1,2)-1 sampling)
-  @test ma === prevfloat(one(BFloat16), 2)
+  # prevfloat(one(BFloat16)) should be maximum
+  @test ma === prevfloat(one(BFloat16), 1)
 end
 
 include("structure.jl")
