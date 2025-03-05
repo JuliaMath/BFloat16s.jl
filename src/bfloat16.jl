@@ -269,9 +269,7 @@ function ==(x::BFloat16, y::BFloat16)
     return ix == iy
 end
 
-for op in (:<, :<=, :>, :>=, :!=)
-    @eval ($op)(a::BFloat16, b::BFloat16) = ($op)(Float32(a), Float32(b))
-end
+<(a::BFloat16, b::BFloat16) = Float32(a) < Float32(b)
 
 Base.widen(::Type{BFloat16}) = Float32
 Base.promote_rule(::Type{Float32}, ::Type{BFloat16}) = Float32
