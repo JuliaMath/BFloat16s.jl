@@ -19,3 +19,6 @@ for F in (:asec, :acsc, :cosh, :acosh, :acoth)
   end
 end
 
+
+x,y = rand(Float32, 2)
+@test widemul(BFloat16(x), BFloat16(y)) isa Float32

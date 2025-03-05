@@ -12,6 +12,8 @@ uint(x::BFloat16) = reinterpret(UInt16, x)
 @testset "BFloat16 bits" begin
   @test uint(two) == 0x4000
   @test uint(half) == 0x3f00
+  @test bitstring(two) == "0100000000000000"
+  @test bitstring(half) == "0011111100000000"
   @test signbit(two) == false
 end
 
