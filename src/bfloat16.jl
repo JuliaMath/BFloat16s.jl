@@ -5,7 +5,7 @@ import Base: isfinite, isnan, precision, iszero, eps,
     exponent_one, exponent_half, leading_zeros,
     signbit, exponent, significand, frexp, ldexp,
     round, Int16, Int32, Int64,
-    +, -, *, /, ^, ==, <, <=, >=, >, !=, inv,
+    +, -, *, /, ^, ==, <, <=, inv,
     abs, abs2, uabs, sqrt, cbrt,
     exp, exp2, exp10, expm1,
     log, log2, log10, log1p,
@@ -270,6 +270,9 @@ function ==(x::BFloat16, y::BFloat16)
 end
 
 <(a::BFloat16, b::BFloat16) = Float32(a) < Float32(b)
+@static if VERSION < v"1.8"
+    <=(a::BFloat16, b::BFloat16) = Float32(a) <= Float32(b)
+end
 
 Base.widen(::Type{BFloat16}) = Float32
 Base.promote_rule(::Type{Float32}, ::Type{BFloat16}) = Float32
