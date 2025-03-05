@@ -1,5 +1,9 @@
 # BFloat16s.jl
-[![MIT license](http://img.shields.io/badge/license-MIT-brightgreen.svg)](http://opensource.org/licenses/MIT) 
+[![MIT license](http://img.shields.io/badge/license-MIT-brightgreen.svg)](http://opensource.org/licenses/MIT)
+[![codecov-img]][codecov-url]
+
+[codecov-img]: https://codecov.io/gh/JuliaMath/BFloat16s.jl/branch/master/graph/badge.svg
+[codecov-url]: https://codecov.io/gh/JuliaMath/BFloat16s.jl
 
 This package defines the [BFloat16 data type](https://en.wikipedia.org/wiki/Bfloat16_floating-point_format),
 a floating-point format with 1 sign bit, 8 exponent bits and 7 mantissa bits.
