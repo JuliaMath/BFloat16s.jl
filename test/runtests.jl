@@ -71,11 +71,11 @@ end
 end
 
 @testset "abi" begin
-  f() = BFloat16(1)
-  @test f() == BFloat16(1)
+    f() = BFloat16(1)
+    @test f() == BFloat16(1)
 
-  g(x) = x+BFloat16(1)
-  @test g(BFloat16(2)) == BFloat16(3)
+    g(x) = x+BFloat16(1)
+    @test g(BFloat16(2)) == BFloat16(3)
 end
 
 @testset "functions" begin
@@ -110,7 +110,7 @@ end
                        ("%.3E",      "1.234E+00"),
                        ("%.2a",    "0x1.3cp+0"),
                        ("%.2A",    "0X1.3CP+0")),
-        num in (BFloat16(1.234),)
+            num in (BFloat16(1.234),)
         @eval @test @sprintf($fmt, $num) == $val
     end
     @test (@sprintf "%f" BFloat16(Inf)) == "Inf"
@@ -141,102 +141,99 @@ end
 end
 
 @testset "random" begin
-  x = Array{BFloat16}(undef, 10)
-  y = Array{BFloat16}(undef, 10)
-  rand!(x)
-  rand!(y)
-  @test x !== y
+    x = Array{BFloat16}(undef, 10)
+    y = Array{BFloat16}(undef, 10)
+    rand!(x)
+    rand!(y)
+    @test x !== y
 
-  randn!(x)
-  randn!(y)
-  @test x !== y
+    randn!(x)
+    randn!(y)
+    @test x !== y
 
-  randexp!(x)
-  randexp!(y)
-  @test x !== y
+    randexp!(x)
+    randexp!(y)
+    @test x !== y
 
-  x = rand(BFloat16, 10)
-  y = rand(BFloat16, 10)
-  @test x !== y
+    x = rand(BFloat16, 10)
+    y = rand(BFloat16, 10)
+    @test x !== y
 
-  x = randn(BFloat16, 10)
-  y = randn(BFloat16, 10)
-  @test x !== y
+    x = randn(BFloat16, 10)
+    y = randn(BFloat16, 10)
+    @test x !== y
 
-  x = randexp(BFloat16, 10)
-  y = randexp(BFloat16, 10)
-  @test x !== y
+    x = randexp(BFloat16, 10)
+    y = randexp(BFloat16, 10)
+    @test x !== y
 end
 
 @testset "round" begin
-  @test round(Int, BFloat16(3.4)) == 3
+    @test round(Int, BFloat16(3.4)) == 3
 end
 
 @testset "Next/prevfloat" begin
+    for x in (one(BFloat16),
+                -one(BFloat16),
+                zero(BFloat16))
+        @test x == nextfloat(prevfloat(x))
+        @test x == prevfloat(nextfloat(x))
 
-  for x in (one(BFloat16),
-            -one(BFloat16),
-            zero(BFloat16))
-    @test x == nextfloat(prevfloat(x))
-    @test x == prevfloat(nextfloat(x))
+        @test x < nextfloat(x)
+        @test x > prevfloat(x)
 
-    @test x < nextfloat(x)
-    @test x > prevfloat(x)
+        @test nextfloat(x, typemax(Int)) == typemax(BFloat16)
+        @test prevfloat(x, typemax(Int)) == typemin(BFloat16)
+    end
 
-    @test nextfloat(x, typemax(Int)) == typemax(BFloat16)
-    @test prevfloat(x, typemax(Int)) == typemin(BFloat16)
-  end
+    @test isnan(nextfloat(BFloat16s.NaNB16))
+    @test isinf(nextfloat(BFloat16s.InfB16))
 
-  @test isnan(nextfloat(BFloat16s.NaNB16))
-  @test isinf(nextfloat(BFloat16s.InfB16))
-
-  @test isnan(prevfloat(BFloat16s.NaNB16))
+    @test isnan(prevfloat(BFloat16s.NaNB16))
 end
 
 @testset "Decompose BFloat16" begin
-  for x in randn(100)
-    bf16 = BFloat16(x)
-    s,e,d = Base.decompose(bf16)
-    @test BFloat16(s*2.0^e/d) == bf16
-  end
+    for x in randn(100)
+        bf16 = BFloat16(x)
+        s,e,d = Base.decompose(bf16)
+        @test BFloat16(s*2.0^e/d) == bf16
+    end
 end
 
 
 @testset "Next/prevfloat(x,::Integer)" begin
+    x = one(BFloat16)
+    @test x == prevfloat(nextfloat(x,100),100)
+    @test x == nextfloat(prevfloat(x,100),100)
 
-  x = one(BFloat16)
-  @test x == prevfloat(nextfloat(x,100),100)
-  @test x == nextfloat(prevfloat(x,100),100)
+    x = -one(BFloat16)
+    @test x == prevfloat(nextfloat(x,100),100)
+    @test x == nextfloat(prevfloat(x,100),100)
 
-  x = -one(BFloat16)
-  @test x == prevfloat(nextfloat(x,100),100)
-  @test x == nextfloat(prevfloat(x,100),100)
+    x = one(BFloat16)
+    @test nextfloat(x,5) == prevfloat(x,-5)
+    @test prevfloat(x,-5) == nextfloat(x,5)
 
-  x = one(BFloat16)
-  @test nextfloat(x,5) == prevfloat(x,-5)
-  @test prevfloat(x,-5) == nextfloat(x,5)
-
-  @test isinf(nextfloat(floatmax(BFloat16),5))
-  @test prevfloat(floatmin(BFloat16),2^8) < 0
-  @test nextfloat(-floatmin(BFloat16),2^8) > 0
+    @test isinf(nextfloat(floatmax(BFloat16),5))
+    @test prevfloat(floatmin(BFloat16),2^8) < 0
+    @test nextfloat(-floatmin(BFloat16),2^8) > 0
 end
 
 @testset "maxintfloat" begin
-
-  a = maxintfloat(BFloat16)
-  @test a+1-1 == a-1    # the first +1 cannot be represented
-  @test a-1+1 == a      # but -1 can
+    a = maxintfloat(BFloat16)
+    @test a+1-1 == a-1    # the first +1 cannot be represented
+    @test a-1+1 == a      # but -1 can
 end
 
 @testset "rand sampling" begin
-  Random.seed!(123)
-  mi, ma = extrema(rand(BFloat16, 1_000_000))
+    Random.seed!(123)
+    mi, ma = extrema(rand(BFloat16, 1_000_000))
 
-  # zero should be the lowest BFloat16 sampled
-  @test mi === zero(BFloat16)
+    # zero should be the lowest BFloat16 sampled
+    @test mi === zero(BFloat16)
 
-  # prevfloat(one(BFloat16)) should be maximum
-  @test ma === prevfloat(one(BFloat16), 1)
+    # prevfloat(one(BFloat16)) should be maximum
+    @test ma === prevfloat(one(BFloat16), 1)
 end
 
 include("structure.jl")

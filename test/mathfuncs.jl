@@ -8,15 +8,15 @@ for F in  (:abs, :abs2, :sqrt, :cbrt,
           :asin, :acos, :atan, :acot,
           :sinh, :cosh, :tanh, :csch, :sech, :coth,
           :asinh, :atanh, :acsch, :asech)
-  @eval begin
-    @test $F(invphi) == BFloat16($F(Float32(invphi)))
-  end
+    @eval begin
+        @test $F(invphi) == BFloat16($F(Float32(invphi)))
+    end
 end
 
 for F in (:asec, :acsc, :cosh, :acosh, :acoth)
-  @eval begin
-    @test $F(phi) == BFloat16($F(Float32(phi)))
-  end
+    @eval begin
+        @test $F(phi) == BFloat16($F(Float32(phi)))
+    end
 end
 
 
