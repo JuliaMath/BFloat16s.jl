@@ -424,3 +424,6 @@ for F in (:abs, :abs2, :sqrt, :cbrt,
      Base.$F(x::BFloat16) = BFloat16($F(Float32(x)))
   end
 end
+
+# irrationals
+BFloat16(num::Irrational) = BFloat16(Float32(num))
