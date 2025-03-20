@@ -424,3 +424,8 @@ for F in (:abs, :abs2, :sqrt, :cbrt,
      Base.$F(x::BFloat16) = BFloat16($F(Float32(x)))
   end
 end
+
+# i/o
+Base.write(io::IO, num::BFloat16) = write(io, UInt16(reinterpret(UInt32, Float32(num)) >> 16))
+Base.read(io::IO, ::Type{BFloat16})::BFloat16 = reinterpret(BFloat16, read(io, UInt16))
+Base.bswap(x::BFloat16) = Base.bswap_int(x)
