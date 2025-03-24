@@ -63,6 +63,11 @@ Base.exponent_bits(::Type{BFloat16}) = 8
 Base.significand_bits(::Type{BFloat16}) = 7
 Base.signbit(x::BFloat16) = (reinterpret(Unsigned, x) & 0x8000) !== 0x0000
 
+function Base.issubnormal(x::BFloat16)
+    y = reinterpret(Unsigned, x)
+    return (y & exponent_mask(BFloat16) == 0) & (y & significand_mask(BFloat16) != 0)
+end
+
 function Base.significand(x::BFloat16)
     xu = reinterpret(Unsigned, x)
     xs = xu & ~sign_mask(BFloat16)
