@@ -199,6 +199,9 @@ end
 
     write(io, hton(BFloat16(3.14159)))
     @test take!(io) == UInt8[0x40, 0x49]
+
+    @test htol(read(IOBuffer(UInt8[0x49, 0x40]), BFloat16)) == BFloat16(3.14159)
+    @test hton(read(IOBuffer(UInt8[0x40, 0x49]), BFloat16)) == BFloat16(3.14159)
 end
 
 include("structure.jl")
