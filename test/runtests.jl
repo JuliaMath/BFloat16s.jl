@@ -30,6 +30,7 @@ end
     @test BFloat16(BigFloat(1)) == BFloat16(1)
     @test BigFloat(BFloat16(1)) == BigFloat(1)
     @test BFloat16(pi) == BFloat16(3.14159)
+    @test all(R -> R<:BFloat16, Base.return_types(BFloat16))
 end
 
 @testset "abi" begin
