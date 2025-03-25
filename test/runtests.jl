@@ -68,6 +68,12 @@ end
         Tu = unsigned(Ts)
         @test trunc.(Tu, bf_val) == trunc.(Tu, bf_val)
     end
+
+    @test trunc(BFloat16, Float32(π)) == BFloat16(3.140625)
+
+    # InexactError
+    @test_throws InexactError trunc(Int16, typemax(BFloat16))
+    @test_throws InexactError trunc(UInt16, typemax(BFloat16))
 end
 
 @testset "abi" begin
