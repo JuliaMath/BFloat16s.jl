@@ -31,6 +31,19 @@ end
     @test BigFloat(BFloat16(1)) == BigFloat(1)
 end
 
+@testset "trunc" begin
+    f_val = 5 .+ rand(100)
+    bf_val = BFloat16.(f_val)
+
+    @testset "$Ts, $(unsigned(Ts))" for Ts in (Int128,)
+        @test trunc.(Ts, bf_val) == trunc.(Ts, bf_val)
+        @test trunc.(Ts, -bf_val) == trunc.(Ts, -bf_val)
+
+        Tu = unsigned(Ts)
+        @test trunc.(Tu, bf_val) == trunc.(Tu, bf_val)
+    end
+end
+
 @testset "abi" begin
   f() = BFloat16(1)
   @test f() == BFloat16(1)
@@ -171,7 +184,7 @@ end
 end
 
 @testset "maxintfloat" begin
-  
+
   a = maxintfloat(BFloat16)
   @test a+1-1 == a-1    # the first +1 cannot be represented
   @test a-1+1 == a      # but -1 can
@@ -180,7 +193,7 @@ end
 @testset "rand sampling" begin
   Random.seed!(123)
   mi, ma = extrema(rand(BFloat16, 1_000_000))
-  
+
   # zero should be the lowest BFloat16 sampled
   @test mi === zero(BFloat16)
 
