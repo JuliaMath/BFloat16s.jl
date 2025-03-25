@@ -290,6 +290,8 @@ if llvm_arithmetic
             Base.unsafe_trunc(::Type{$Ti}, x::BFloat16) = Base.fptoui($Ti, x)
         end
     end
+    Base.unsafe_trunc(::Type{UInt128}, x::BFloat16) = unsafe_trunc(UInt128, Float32(x))
+    Base.unsafe_trunc(::Type{Int128}, x::BFloat16) = unsafe_trunc(Int128, Float32(x))
 else
     Base.unsafe_trunc(T::Type{<:Integer}, x::BFloat16) = unsafe_trunc(T, Float32(x))
 end
