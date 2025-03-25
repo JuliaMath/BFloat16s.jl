@@ -201,7 +201,7 @@ if llvm_arithmetic
         end
     end
 else
-    BFloat16(x::Integer) = convert(BFloat16, convert(Float32, x))
+    BFloat16(x::Integer) = convert(BFloat16, convert(Float32, x)::Float32)
 end
 # TODO: optimize
 BFloat16(x::UInt128) = convert(BFloat16, Float64(x))
@@ -431,3 +431,6 @@ for F in (:abs, :abs2, :sqrt, :cbrt,
      Base.$F(x::BFloat16) = BFloat16($F(Float32(x)))
   end
 end
+
+# irrationals
+BFloat16(x::AbstractIrrational) = BFloat16(Float32(x)::Float32)
