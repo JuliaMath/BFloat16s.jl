@@ -196,7 +196,7 @@ if llvm_arithmetic
         end
     end
 else
-    BFloat16(x::Integer) = convert(BFloat16, convert(Float32, x))
+    BFloat16(x::Integer) = convert(BFloat16, convert(Float32, x)::Float32)
 end
 # TODO: optimize
 BFloat16(x::UInt128) = convert(BFloat16, Float64(x))
