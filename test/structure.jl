@@ -16,21 +16,27 @@ uint(x::BFloat16) = reinterpret(UInt16, x)
 end
 
 @testset "BFloat16 parts" begin
-  @test exponent(whole) == 0
-  @test significand(whole) == one(BFloat16)
-  
-  @test frexp(phi) == (BFloat16(0.80859375), 1)
-  @test ldexp(BFloat16(0.80859375), 1) == phi
-  
-  @test exponent(invphi3) == -3
-  @test significand(invphi3) == BFloat16(1.8828125)
-  
-  fr,xp = frexp(invphi3)
-  @test xp == -2
-  @test fr == BFloat16(0.94140625)
-  @test ldexp(fr, xp) == invphi3
+    @test exponent(whole) == 0
+    @test significand(whole) == one(BFloat16)
+
+    @testset "subnormal" begin
+        allbfs = UInt16(1):typemax(UInt16)
+        res = map(allbfs) do raw
+            bf = reinterpret(BFloat16, raw)
+            issubnormal(bf) == issubnormal(Float32(bf))
+        end
+        @test all(res)
+        @test significand(reinterpret(BFloat16, 0b0000000000000001)) == one(BFloat16)
+    end
+
+    @test frexp(phi) == (BFloat16(0.80859375), 1)
+    @test ldexp(BFloat16(0.80859375), 1) == phi
+
+    @test exponent(invphi3) == -3
+    @test significand(invphi3) == BFloat16(1.8828125)
+
+    fr,xp = frexp(invphi3)
+    @test xp == -2
+    @test fr == BFloat16(0.94140625)
+    @test ldexp(fr, xp) == invphi3
 end
-
-
-  
-    
