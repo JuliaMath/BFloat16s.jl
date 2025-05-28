@@ -5,7 +5,7 @@ import Base: isfinite, isnan, precision, iszero, eps,
     exponent_one, exponent_half, leading_zeros,
     signbit, exponent, significand, frexp, ldexp,
     round, Int16, Int32, Int64,
-    +, -, *, /, ^, ==, <, <=, >=, >, !=, inv,
+    +, -, *, /, ^, ==, <, <=, inv,
     abs, abs2, uabs, sqrt, cbrt,
     exp, exp2, exp10, expm1,
     log, log2, log10, log1p,
@@ -37,7 +37,7 @@ else
     false
 end
 const llvm_arithmetic = if llvm_storage
-    using Core: BFloat16
+    import Core: BFloat16
     if Sys.ARCH in [:x86_64, :i686] && Base.libllvm_version >= v"15"
         true
     elseif Sys.ARCH == :aarch64 && Base.libllvm_version >= v"19"
@@ -62,6 +62,11 @@ Base.exponent_bias(::Type{BFloat16}) = 127
 Base.exponent_bits(::Type{BFloat16}) = 8
 Base.significand_bits(::Type{BFloat16}) = 7
 Base.signbit(x::BFloat16) = (reinterpret(Unsigned, x) & 0x8000) !== 0x0000
+
+function Base.issubnormal(x::BFloat16)
+    y = reinterpret(Unsigned, x)
+    return (y & exponent_mask(BFloat16) == 0) & (y & significand_mask(BFloat16) != 0)
+end
 
 function Base.significand(x::BFloat16)
     xu = reinterpret(Unsigned, x)
@@ -196,7 +201,7 @@ if llvm_arithmetic
         end
     end
 else
-    BFloat16(x::Integer) = convert(BFloat16, convert(Float32, x))
+    BFloat16(x::Integer) = convert(BFloat16, convert(Float32, x)::Float32)
 end
 # TODO: optimize
 BFloat16(x::UInt128) = convert(BFloat16, Float64(x))
@@ -264,8 +269,9 @@ function ==(x::BFloat16, y::BFloat16)
     return ix == iy
 end
 
-for op in (:<, :<=, :>, :>=, :!=)
-    @eval ($op)(a::BFloat16, b::BFloat16) = ($op)(Float32(a), Float32(b))
+<(a::BFloat16, b::BFloat16) = Float32(a) < Float32(b)
+@static if VERSION < v"1.8"
+    <=(a::BFloat16, b::BFloat16) = Float32(a) <= Float32(b)
 end
 
 Base.widen(::Type{BFloat16}) = Float32
@@ -290,6 +296,8 @@ if llvm_arithmetic
             Base.unsafe_trunc(::Type{$Ti}, x::BFloat16) = Base.fptoui($Ti, x)
         end
     end
+    Base.unsafe_trunc(::Type{UInt128}, x::BFloat16) = unsafe_trunc(UInt128, Float32(x))
+    Base.unsafe_trunc(::Type{Int128}, x::BFloat16) = unsafe_trunc(Int128, Float32(x))
 else
     Base.unsafe_trunc(T::Type{<:Integer}, x::BFloat16) = unsafe_trunc(T, Float32(x))
 end
@@ -429,3 +437,6 @@ end
 Base.write(io::IO, num::BFloat16) = write(io, UInt16(reinterpret(UInt32, Float32(num)) >> 16))
 Base.read(io::IO, ::Type{BFloat16})::BFloat16 = reinterpret(BFloat16, read(io, UInt16))
 Base.bswap(x::BFloat16) = Base.bswap_int(x)
+
+# irrationals
+BFloat16(x::AbstractIrrational) = BFloat16(Float32(x)::Float32)
