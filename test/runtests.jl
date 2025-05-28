@@ -164,11 +164,9 @@ end
     @test _parse(BFloat16, "0X1.3CP+0") === BFloat16(1.234375)
 end
 
-@testset "tryparse" begin
-    @test tryparse(BFloat16, "635.3X") === nothing
-    @test tryparse(BFloat16, "X635.4") === nothing
-    @test tryparse(BFloat16, "ABCDE") === nothing
-    @test tryparse(BFloat16, "1e0e0") === nothing
+@testset "not parseable" for str in ("635.3X", "X635.4", "ABCDE", "1e0e0")
+    @test tryparse(BFloat16, str) === nothing
+    @test_throws ArgumentError parse(BFloat16, str)
 end
 
 @testset "random" begin
