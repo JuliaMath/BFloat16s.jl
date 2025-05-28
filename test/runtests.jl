@@ -168,6 +168,7 @@ end
     @test tryparse(BFloat16, "635.3X") === nothing
     @test tryparse(BFloat16, "X635.4") === nothing
     @test tryparse(BFloat16, "ABCDE") === nothing
+    @test tryparse(BFloat16, "1e0e0") === nothing
 end
 
 @testset "random" begin
