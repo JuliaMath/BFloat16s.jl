@@ -362,6 +362,13 @@ function Base.show(io::IO, x::BFloat16)
 end
 Printf.tofloat(x::BFloat16) = Float32(x)
 
+# Parsing
+Base.parse(::Type{BFloat16}, s::AbstractString) = BFloat16(parse(Float32, s))
+function Base.tryparse(::Type{BFloat16}, s::AbstractString)
+    r = tryparse(Float32, s)
+    return isnothing(r) ? nothing : BFloat16(r)
+end
+
 # Random
 import Random: rand, randn, randexp, AbstractRNG, Sampler
 

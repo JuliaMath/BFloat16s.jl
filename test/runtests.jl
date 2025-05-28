@@ -146,6 +146,30 @@ end
     @test repr(BFloat16(2)) == "BFloat16(2.0)"
 end
 
+@testset "parse" for _parse in (parse, tryparse)
+    @test _parse(BFloat16, "Inf") === BFloat16(Inf)
+    @test _parse(BFloat16, "-Inf") === BFloat16(-Inf)
+    @test _parse(BFloat16, "NaN") === BFloat16(NaN)
+    @test _parse(BFloat16, "2") === BFloat16(2)
+    @test _parse(BFloat16, "1.3") === BFloat16(1.3)
+    @test _parse(BFloat16, "+234.6") === BFloat16(234.6)
+    @test _parse(BFloat16, "    +234.7") === BFloat16(234.7)
+    @test _parse(BFloat16, "    -234.8") === BFloat16(-234.8)
+    @test _parse(BFloat16, "    -234.90") === BFloat16(-234.9)
+    @test _parse(BFloat16, "    235.10 ") === BFloat16(235.1)
+    @test _parse(BFloat16, "000235.20 ") === BFloat16(235.2)
+    @test _parse(BFloat16, "4e+03") === BFloat16(4e3)
+    @test _parse(BFloat16, "5.e+04") === BFloat16(5e4)
+    @test _parse(BFloat16, "0x1.3cp+0") === BFloat16(1.234375)
+    @test _parse(BFloat16, "0X1.3CP+0") === BFloat16(1.234375)
+end
+
+@testset "tryparse" begin
+    @test tryparse(BFloat16, "635.3X") === nothing
+    @test tryparse(BFloat16, "X635.4") === nothing
+    @test tryparse(BFloat16, "ABCDE") === nothing
+end
+
 @testset "random" begin
     x = Array{BFloat16}(undef, 10)
     y = Array{BFloat16}(undef, 10)
