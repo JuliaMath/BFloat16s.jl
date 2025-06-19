@@ -5,7 +5,7 @@ import Base: isfinite, isnan, precision, iszero, eps,
     exponent_one, exponent_half, leading_zeros,
     signbit, exponent, significand, frexp, ldexp,
     round, Int16, Int32, Int64,
-    +, -, *, /, ^, ==, <, <=, inv,
+    +, -, *, /, ^, fma, ==, <, <=, inv,
     abs, abs2, uabs, sqrt, cbrt,
     exp, exp2, exp10, expm1,
     log, log2, log10, log1p,
@@ -439,6 +439,8 @@ for F in (:abs, :abs2, :sqrt, :cbrt,
      Base.$F(x::BFloat16) = BFloat16($F(Float32(x)))
   end
 end
+
+Base.fma(x::BFloat16, y::BFloat16, z::BFloat16) = BFloat16(fma(Float32(x), Float32(y), Float32(z)))
 
 # irrationals
 BFloat16(x::AbstractIrrational) = BFloat16(Float32(x)::Float32)
