@@ -440,7 +440,7 @@ for F in (:abs, :abs2, :sqrt, :cbrt,
   end
 end
 
-Base.fma(x::BFloat16, y::BFloat16, z::BFloat16) = BFloat16(fma(Float32(x), Float32(y), Float32(z)))
+Base.fma(x::BFloat16, y::BFloat16, z::BFloat16) = ccall("llvm.fma.bf16", llvmcall, BFloat16, (BFloat16, BFloat16, BFloat16), x, y, z)
 
 # irrationals
 BFloat16(x::AbstractIrrational) = BFloat16(Float32(x)::Float32)
