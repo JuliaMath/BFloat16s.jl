@@ -391,7 +391,15 @@ randexp(rng::AbstractRNG, ::Type{BFloat16}) = convert(BFloat16, randexp(rng))
 bitstring(x::BFloat16) = bitstring(reinterpret(Unsigned, x))
 
 # next/prevfloat
-function Base.nextfloat(f::BFloat16, d::Integer)
+@static if isdefined(Base, :_nextfloat) # JuliaLang#59668
+    Base._nextfloat(f::BFloat16, dneg::Bool, da::Integer) = _nextbfloat(f, dneg, da)
+else
+    Base.nextfloat(f::BFloat16, d::Integer) = _nextbfloat(f, d < 0, uabs(d))
+    Base.prevfloat(f::BFloat16, d::Integer) = _nextbfloat(f, d > 0, uabs(d))
+end
+
+function _nextbfloat(f::BFloat16, dneg::Bool, da::Integer)
+    # da must be > 0
     F = typeof(f)
     fumax = reinterpret(Unsigned, F(Inf))
     U = typeof(fumax)
@@ -401,8 +409,6 @@ function Base.nextfloat(f::BFloat16, d::Integer)
     fneg = fi < 0
     fu = unsigned(fi & typemax(fi))
 
-    dneg = d < 0
-    da = uabs(d)
     if da > typemax(U)
         fneg = dneg
         fu = fumax
