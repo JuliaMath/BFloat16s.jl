@@ -36,8 +36,10 @@ const llvm_storage = if isdefined(Core, :BFloat16)
 else
     false
 end
-const llvm_arithmetic = if llvm_storage
+if llvm_storage
     import Core: BFloat16
+end
+const llvm_arithmetic = if llvm_storage
     if Sys.ARCH in [:x86_64, :i686] && Base.libllvm_version >= v"15"
         true
     elseif Sys.ARCH == :aarch64 && Base.libllvm_version >= v"19"
