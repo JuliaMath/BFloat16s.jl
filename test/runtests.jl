@@ -272,6 +272,22 @@ end
     @test ma === prevfloat(one(BFloat16), 1)
 end
 
+@testset "i/o" begin
+    @test reinterpret(UInt16, BFloat16(1/3)) == 0x3eab
+    @test reinterpret(UInt16, bswap(BFloat16(1/3))) == 0xab3e
+
+    io = IOBuffer()
+
+    write(io, htol(BFloat16(3.14159)))
+    @test take!(io) == UInt8[0x49, 0x40]
+
+    write(io, hton(BFloat16(3.14159)))
+    @test take!(io) == UInt8[0x40, 0x49]
+
+    @test htol(read(IOBuffer(UInt8[0x49, 0x40]), BFloat16)) == BFloat16(3.14159)
+    @test hton(read(IOBuffer(UInt8[0x40, 0x49]), BFloat16)) == BFloat16(3.14159)
+end
+
 include("structure.jl")
 include("mathfuncs.jl")
 include("lowprecarrays.jl")

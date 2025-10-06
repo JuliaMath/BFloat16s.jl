@@ -448,5 +448,10 @@ for F in (:abs, :abs2, :sqrt, :cbrt,
   end
 end
 
+# i/o
+Base.write(io::IO, num::BFloat16) = write(io, reinterpret(UInt16, num))
+Base.read(io::IO, ::Type{BFloat16})::BFloat16 = reinterpret(BFloat16, read(io, UInt16))
+Base.bswap(x::BFloat16) = Base.bswap_int(x)
+
 # irrationals
 BFloat16(x::AbstractIrrational) = BFloat16(Float32(x)::Float32)
