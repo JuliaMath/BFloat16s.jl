@@ -17,6 +17,7 @@ jobs:
           - 'lts'
           - '1'
           - 'pre'
+          - 'nightly'
         os:
           - ubuntu-latest
           - windows-latest
@@ -26,10 +27,10 @@ jobs:
           - os: macos-latest
             arch: aarch64
             version: '1'
-          - os: macos-13
+          - os: macos-15-intel
             arch: x64
             version: '1'
-            
+
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2

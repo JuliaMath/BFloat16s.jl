@@ -221,6 +221,11 @@ end
     @test isinf(nextfloat(BFloat16s.InfB16))
 
     @test isnan(prevfloat(BFloat16s.NaNB16))
+
+    @test nextfloat(BFloat16(1.0), UInt(5)) == nextfloat(BFloat16(1.0), 5)
+    @test prevfloat(BFloat16(1.0), UInt(5)) == prevfloat(BFloat16(1.0), 5)
+    @test nextfloat(BFloat16(0.0), typemax(UInt64)) == Inf
+    @test prevfloat(BFloat16(0.0), typemax(UInt64)) == -Inf
 end
 
 @testset "Decompose BFloat16" begin
