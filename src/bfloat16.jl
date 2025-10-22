@@ -245,7 +245,7 @@ else
     for f in (:+, :-, :*, :/, :^)
         @eval ($f)(x::BFloat16, y::BFloat16) = BFloat16($(f)(Float32(x), Float32(y)))
     end
-    -(x::BFloat16) = reinterpret(BFloat16, reinterpret(Unsigned, x) ⊻ sign_mask(BFloat16))
+    -(x::BFloat16) = BFloat16(0) - x
 end
 ^(x::BFloat16, y::Integer) = BFloat16(Float32(x)^y)
 
