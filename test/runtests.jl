@@ -104,6 +104,8 @@ end
     @test zero(BFloat16) == BFloat16(0.0f0)
     @test one(BFloat16) == BFloat16(1.0)
     @test BFloat16(2.0) ^ -2 == BFloat16(0.25)
+    @test -one(BFloat16) == BFloat16(-1.0)
+    @test -zero(BFloat16) == BFloat16(-0.0)
 end
 
 @testset "printf" begin
@@ -286,6 +288,14 @@ end
 
     @test htol(read(IOBuffer(UInt8[0x49, 0x40]), BFloat16)) == BFloat16(3.14159)
     @test hton(read(IOBuffer(UInt8[0x40, 0x49]), BFloat16)) == BFloat16(3.14159)
+end
+
+include("structure.jl")
+include("mathfuncs.jl")
+include("lowprecarrays.jl")
+
+end # @testset "BFloat16s"
+== BFloat16(3.14159)
 end
 
 include("structure.jl")
