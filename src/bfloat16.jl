@@ -353,19 +353,37 @@ end
 
 # Showing
 
-# Shortest decimal that round-trips through BFloat16's 8-bit precision.
-# Mirrors Julia's `show(::Float16)` behavior tuned to the source type rather
-# than leaking Float32's 24-bit reconstruction (which produced misleadingly
-# long output like `BFloat16(0.100097656)` for what is conceptually `0.1`).
-function _shortest_decimal_string(x::BFloat16)
-    iszero(x) && return signbit(x) ? "-0.0" : "0.0"
-    f32 = Float32(x)
-    for ndig in 1:9
-        s = Printf.@sprintf("%.*e", ndig - 1, f32)
-        rounded = parse(Float64, s)
-        BFloat16(rounded) === x && return string(rounded)
+function _format_sci(f64::Float64, n::Int)
+    ax = abs(f64)
+    e = floor(Int, log10(ax))
+    k = n - 1 - e
+    scaled = k >= 0 ? ax * exp10(k) : ax / exp10(-k)
+    m = round(Int, scaled)
+    if m >= 10^n
+        m ÷= 10
+        e += 1
     end
-    return string(Float64(f32))
+    digits = lpad(string(m), n, '0')
+    mantissa = n == 1 ? digits * ".0" : digits[1:1] * "." * digits[2:n]
+    return (signbit(f64) ? "-" : "") * mantissa * "e" * string(e)
+end
+
+# 4 sig digits suffice for BFloat16 by ceil(8*log10(2))+1.
+# When the n-sig decimal isn't representable in Float64, Ryu's shortest form
+# blows up (e.g. "2.9999999999999998e-40"); detect via length and reformat.
+function _shortest_decimal_string(x::BFloat16)
+    x === zero(BFloat16) && return "0.0"
+    x === -zero(BFloat16) && return "-0.0"
+    isfinite(x) || return string(Float64(x))
+    f64 = Float64(x)
+    for ndig in 1:4
+        rounded = round(f64, sigdigits=ndig)
+        BFloat16(rounded) === x || continue
+        s = string(rounded)
+        length(s) <= ndig + 8 && return s
+        return _format_sci(f64, ndig)
+    end
+    return string(f64)
 end
 
 function Base.show(io::IO, x::BFloat16)
