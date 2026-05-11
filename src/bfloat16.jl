@@ -352,6 +352,21 @@ for Ti in (Int8, Int16, Int32, Int64, Int128, UInt8, UInt16, UInt32, UInt64, UIn
 end
 
 # Showing
+
+# Shortest decimal that round-trips through BFloat16's 8-bit precision.
+# Mirrors Julia's `show(::Float16)` behavior tuned to the source type rather
+# than leaking Float32's 24-bit reconstruction (which produced misleadingly
+# long output like `BFloat16(0.100097656)` for what is conceptually `0.1`).
+function _shortest_decimal_string(x::BFloat16)
+    iszero(x) && return signbit(x) ? "-0.0" : "0.0"
+    f64 = Float64(Float32(x))
+    for ndig in 1:17
+        rounded = round(f64, sigdigits=ndig)
+        BFloat16(rounded) === x && return string(rounded)
+    end
+    return string(f64)
+end
+
 function Base.show(io::IO, x::BFloat16)
     hastypeinfo = BFloat16 === get(io, :typeinfo, Any)
     if isinf(x)
@@ -360,7 +375,7 @@ function Base.show(io::IO, x::BFloat16)
         print(io, "NaNB16")
     else
         hastypeinfo || print(io, "BFloat16(")
-        show(IOContext(io, :typeinfo=>Float32), Float32(x))
+        print(io, _shortest_decimal_string(x))
         hastypeinfo || print(io, ")")
     end
 end
