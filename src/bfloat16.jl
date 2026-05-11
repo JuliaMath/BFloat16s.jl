@@ -359,12 +359,13 @@ end
 # long output like `BFloat16(0.100097656)` for what is conceptually `0.1`).
 function _shortest_decimal_string(x::BFloat16)
     iszero(x) && return signbit(x) ? "-0.0" : "0.0"
-    f64 = Float64(Float32(x))
-    for ndig in 1:17
-        rounded = round(f64, sigdigits=ndig)
+    f32 = Float32(x)
+    for ndig in 1:9
+        s = Printf.@sprintf("%.*e", ndig - 1, f32)
+        rounded = parse(Float64, s)
         BFloat16(rounded) === x && return string(rounded)
     end
-    return string(f64)
+    return string(Float64(f32))
 end
 
 function Base.show(io::IO, x::BFloat16)

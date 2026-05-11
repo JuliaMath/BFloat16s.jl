@@ -196,6 +196,11 @@ end
         @test BFloat16(parse(Float64, s)) === x
     end
 
+    # Every finite BFloat16 bit pattern round-trips through its shown decimal.
+    @test all(u -> (x = reinterpret(BFloat16, u); !isfinite(x) ||
+                    BFloat16(parse(Float64, BFloat16s._shortest_decimal_string(x))) === x),
+              UInt16(0):UInt16(0xffff))
+
     # In array context, type prefix is suppressed.
     buf = IOBuffer()
     show(IOContext(buf, :typeinfo => BFloat16), BFloat16(0.1))
