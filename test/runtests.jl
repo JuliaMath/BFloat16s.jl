@@ -181,6 +181,25 @@ end
     @test repr(BFloat16(-Inf)) == "-InfB16"
     @test repr(BFloat16(NaN)) == "NaNB16"
     @test repr(BFloat16(2)) == "BFloat16(2.0)"
+
+    # Precision-aware: shown digit count reflects BFloat16's 8-bit precision,
+    # not Float32's 24-bit reconstruction.
+    @test repr(BFloat16(0.1))   == "BFloat16(0.1)"   # was "BFloat16(0.100097656)"
+    @test repr(BFloat16(1.0))   == "BFloat16(1.0)"
+    @test repr(BFloat16(-0.0)) == "BFloat16(-0.0)"
+
+    # Round-trip invariant: parsing the shown decimal and reconstructing
+    # through BFloat16 lands on the same bit pattern.
+    for v in (0.1, 1.5, 3.14, 1e10, 1e-10, nextfloat(1.0, 1000))
+        x = BFloat16(v)
+        s = BFloat16s._shortest_decimal_string(x)
+        @test BFloat16(parse(Float64, s)) === x
+    end
+
+    # In array context, type prefix is suppressed.
+    buf = IOBuffer()
+    show(IOContext(buf, :typeinfo => BFloat16), BFloat16(0.1))
+    @test String(take!(buf)) == "0.1"
 end
 
 @testset "parse" for _parse in (parse, tryparse)
