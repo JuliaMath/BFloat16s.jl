@@ -369,8 +369,9 @@ function _format_sci(f64::Float64, n::Int)
 end
 
 # 4 sig digits suffice for BFloat16 by ceil(8*log10(2))+1.
-# When the n-sig decimal isn't representable in Float64, Ryu's shortest form
-# blows up (e.g. "2.9999999999999998e-40"); detect via length and reformat.
+# `round(f64, sigdigits=n)` can land ~1 ULP off the Float64 that parsing the
+# n-digit decimal would yield, making Ryu emit 17 digits to disambiguate
+# (e.g. "2.9999999999999998e-40"); detect via length and reformat.
 function _shortest_decimal_string(x::BFloat16)
     x === zero(BFloat16) && return "0.0"
     x === -zero(BFloat16) && return "-0.0"
