@@ -32,7 +32,7 @@ julia> a = BFloat16(2)
 BFloat16(2.0)
 
 julia> sqrt(a)
-BFloat16(1.4140625)
+BFloat16(1.414)
 ```
 
 However, in practice you may hit a `MethodError` indicating that this package does not implement
@@ -43,21 +43,21 @@ of `BFloat16` should be as smooth as the following example, solving a linear equ
 ```julia
 julia> A = randn(BFloat16,3,3)
 3×3 Matrix{BFloat16}:
-  1.46875   -1.20312   -1.0
-  0.257812  -0.671875  -0.929688
- -0.410156  -1.75      -0.0162354
+  1.47   -1.2   -1.0
+  0.258  -0.67  -0.93
+ -0.41   -1.75  -0.0162
 
 julia> b = randn(BFloat16,3)
 3-element Vector{BFloat16}:
- -0.26367188
- -0.14160156
-  0.77734375
+ -0.264
+ -0.142
+  0.777
 
 julia> A\b
 3-element Vector{BFloat16}:
- -0.24902344
- -0.38671875
-  0.36328125
+ -0.249
+ -0.387
+  0.363
 ```
 
 ## `LowPrecArray` for mixed-precision Float32/BFloat16 matrix multiplications
