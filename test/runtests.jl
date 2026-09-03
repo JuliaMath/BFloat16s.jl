@@ -1,8 +1,15 @@
 using Test, BFloat16s, Printf, Random
 
-@info "Testing BFloat16s" BFloat16s.llvm_storage BFloat16s.llvm_arithmetic
+@info "Testing BFloat16s" BFloat16s.llvm_storage BFloat16s.llvm_arithmetic BFloat16s.llvm_bfloat_conversions
 
 @testset "BFloat16s" begin
+
+@testset "vectorized codegen" begin
+    test_file = joinpath(@__DIR__, "vectorization.jl")
+    project = dirname(Base.active_project())
+    cmd = `$(Base.julia_cmd()) --startup-file=no --check-bounds=no --project=$project $test_file`
+    @test success(cmd)
+end
 
 @testset "basics" begin
     @test Base.exponent_bits(BFloat16) == 8

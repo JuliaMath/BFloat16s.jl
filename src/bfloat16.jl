@@ -39,8 +39,16 @@ end
 if llvm_storage
     import Core: BFloat16
 end
+# With avx512bf16, LLVM 16 cannot select vectorized bf16 arithmetic or conversions,
+# while LLVM 18 still fails for conversions into bf16 (#107, JuliaLang/julia#62666).
+# LLVM 19 fixes both; Julia 1.12.7 works around the LLVM 18 bug in the JIT target.
+const broken_x86_bf16 = llvm_storage && Sys.ARCH in [:x86_64, :i686] &&
+    Base.libllvm_version < v"19" && VERSION < v"1.12.7" &&
+    "+avx512bf16" in split(ccall(:jl_get_cpu_features, String, ()), ',')
 const llvm_arithmetic = if llvm_storage
-    if Sys.ARCH in [:x86_64, :i686] && Base.libllvm_version >= v"15"
+    if broken_x86_bf16 && Base.libllvm_version < v"18"
+        false
+    elseif Sys.ARCH in [:x86_64, :i686] && Base.libllvm_version >= v"15"
         true
     elseif Sys.ARCH == :aarch64 && Base.libllvm_version >= v"19"
         true
@@ -51,6 +59,8 @@ else
     primitive type BFloat16 <: AbstractFloat 16 end
     false
 end
+# LLVM conversions into BFloat16 fail on both affected LLVM releases.
+const llvm_bfloat_conversions = llvm_arithmetic && !broken_x86_bf16
 
 Base.reinterpret(::Type{Unsigned}, x::BFloat16) = reinterpret(UInt16, x)
 Base.reinterpret(::Type{Signed}, x::BFloat16) = reinterpret(Int16, x)
@@ -162,7 +172,7 @@ Base.trunc(::Type{BFloat16}, x::Float32) = reinterpret(BFloat16,
         (reinterpret(UInt32, x) >> 16) % UInt16
     )
 
-if llvm_arithmetic
+if llvm_bfloat_conversions
     BFloat16(x::Float32) = Base.fptrunc(BFloat16, x)
     BFloat16(x::Float64) = Base.fptrunc(BFloat16, x)
 
@@ -191,7 +201,7 @@ else
 end
 
 # Conversion from Integer
-if llvm_arithmetic
+if llvm_bfloat_conversions
     for st in (Int8, Int16, Int32, Int64)
         @eval begin
             BFloat16(x::($st)) = Base.sitofp(BFloat16, x)
