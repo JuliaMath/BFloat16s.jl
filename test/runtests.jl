@@ -211,7 +211,12 @@ end
         @test x == prevfloat(nextfloat(x))
 
         @test x < nextfloat(x)
-        @test x > prevfloat(x)
+        # +0 and prevfloat(+0)==-0 compare equal under ==/> ; use signbit
+        if iszero(x) && !signbit(x)
+            @test signbit(prevfloat(x))
+        else
+            @test x > prevfloat(x)
+        end
 
         @test nextfloat(x, typemax(Int)) == typemax(BFloat16)
         @test prevfloat(x, typemax(Int)) == typemin(BFloat16)

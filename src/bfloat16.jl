@@ -393,11 +393,12 @@ randexp(rng::AbstractRNG, ::Type{BFloat16}) = convert(BFloat16, randexp(rng))
 bitstring(x::BFloat16) = bitstring(reinterpret(Unsigned, x))
 
 # next/prevfloat
+# Always route through _nextbfloat. On some Julia 1.13-rc + Core.BFloat16
+# builds (seen on Windows), the builtin nextfloat(zero) is a no-op.
+Base.nextfloat(f::BFloat16, d::Integer) = _nextbfloat(f, d < 0, uabs(d))
+Base.prevfloat(f::BFloat16, d::Integer) = _nextbfloat(f, d > 0, uabs(d))
 @static if isdefined(Base, :_nextfloat) # JuliaLang#59668
     Base._nextfloat(f::BFloat16, dneg::Bool, da::Integer) = _nextbfloat(f, dneg, da)
-else
-    Base.nextfloat(f::BFloat16, d::Integer) = _nextbfloat(f, d < 0, uabs(d))
-    Base.prevfloat(f::BFloat16, d::Integer) = _nextbfloat(f, d > 0, uabs(d))
 end
 
 function _nextbfloat(f::BFloat16, dneg::Bool, da::Integer)
