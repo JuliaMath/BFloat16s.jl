@@ -18,7 +18,7 @@ This package is suitable to evaluate whether using BFloat16 would cause
 precision problems for any particular algorithm, even without access to supporting
 hardware.
 
-Native hardware support, implemented in this package, began with Julia 1.11 via `Core.BFloat16` with support for Intel processors (x86_64, i686) via LLVM 16. Support for 64-bit ARM processors (aarch64) is available with Julia 1.13 which uses LLVM 20. 
+Native support in this package uses `Core.BFloat16` when LLVM target support is available: x86_64 with LLVM 15+, and aarch64 with LLVM 19+. i686 currently uses software storage and arithmetic due LLVM miscompilations.
 
 ## Usage
 
@@ -106,4 +106,3 @@ julia> Float64.(A.storage)^2
 Note that the low-precision result differs from (is less precise than) the
 result computed in Float32 arithmetic (which matches the result in Float64
 precision).
-

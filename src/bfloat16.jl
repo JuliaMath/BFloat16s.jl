@@ -26,7 +26,7 @@ import Printf
 # - x86_64: storage and arithmetic support in LLVM 15
 # - i686: use software storage and arithmetic; native bfloat is miscompiled
 #   across basic blocks, and signed Int64 conversion can crash LLVM
-# - aarch64: storage support in LLVM 17
+# - aarch64: storage and arithmetic support in LLVM 19
 const llvm_storage = if isdefined(Core, :BFloat16)
     if Sys.ARCH == :x86_64 && Base.libllvm_version >= v"15"
         true
