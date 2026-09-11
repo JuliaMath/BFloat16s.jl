@@ -55,6 +55,29 @@ end
 
     @test_throws InexactError Int16(typemax(BFloat16))
     @test_throws InexactError UInt16(typemax(BFloat16))
+
+    # Int is only 32 bits on i686; exercise the 64-bit conversions explicitly.
+    for T in (Int64, UInt64)
+        values = T[0, 1, 255, 256, 257, 258, 259, typemax(T) - 1, typemax(T)]
+        # Exactly representable values and both sides of rounding ties.
+        for shift in (0, 16, 32, 54)
+            midpoint = T(257) << shift
+            append!(values, (midpoint - 1, midpoint, midpoint + 1))
+        end
+        if T === Int64
+            append!(values, -values)
+            append!(values, (typemin(T), typemin(T) + 1))
+        end
+        # Preserve the existing rounding through Float32.
+        for x in values
+            @test BFloat16(x) === BFloat16(Float32(x))
+        end
+    end
+    @test reinterpret(UInt16, BFloat16(typemin(Int64))) == 0xdf00
+    @test reinterpret(UInt16, BFloat16(typemax(Int64))) == 0x5f00
+    @test reinterpret(UInt16, BFloat16(typemax(UInt64))) == 0x5f80
+    @test signbit(BFloat16(Int64(-1)))
+    @test !signbit(BFloat16(Int64(0)))
 end
 
 @testset "trunc" begin
@@ -74,6 +97,19 @@ end
     # InexactError
     @test_throws InexactError trunc(Int16, typemax(BFloat16))
     @test_throws InexactError trunc(UInt16, typemax(BFloat16))
+end
+
+@testset "control flow" begin
+    # On i686, the 64-bit atomic expands to a loop. Native bfloat values carried
+    # across its basic blocks can lose their sign, even without coverage.
+    Base.@noinline function sign_after_atomic(x::BFloat16, counter::Threads.Atomic{Int64})
+        Threads.atomic_add!(counter, Int64(1))
+        return signbit(x)
+    end
+    counter = Threads.Atomic{Int64}(0)
+    for bits in UInt16[0x0000, 0x8000, 0x3f80, 0xbf80, 0x7f80, 0xff80, 0x7fc0, 0xffc0]
+        @test sign_after_atomic(reinterpret(BFloat16, bits), counter) == (bits >> 15 != 0)
+    end
 end
 
 @testset "abi" begin
