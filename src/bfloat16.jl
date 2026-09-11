@@ -450,7 +450,11 @@ for F in (:abs, :abs2, :sqrt, :cbrt,
   end
 end
 
-Base.fma(x::BFloat16, y::BFloat16, z::BFloat16) = ccall("llvm.fma.bf16", llvmcall, BFloat16, (BFloat16, BFloat16, BFloat16), x, y, z)
+if llvm_arithmetic
+    Base.fma(x::BFloat16, y::BFloat16, z::BFloat16) = ccall("llvm.fma.bf16", llvmcall, BFloat16, (BFloat16, BFloat16, BFloat16), x, y, z)
+else
+    Base.fma(x::BFloat16, y::BFloat16, z::BFloat16) = BFloat16(fma(Float32(x), Float32(y), Float32(z)))
+end
 # i/o
 Base.write(io::IO, num::BFloat16) = write(io, reinterpret(UInt16, num))
 Base.read(io::IO, ::Type{BFloat16})::BFloat16 = reinterpret(BFloat16, read(io, UInt16))
