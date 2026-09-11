@@ -55,6 +55,30 @@ end
 
     @test_throws InexactError Int16(typemax(BFloat16))
     @test_throws InexactError UInt16(typemax(BFloat16))
+
+    # Int is only 32 bits on i686; exercise the 64-bit conversions explicitly.
+    for T in (Int64, UInt64)
+        values = T[0, 1, 255, 256, 257, 258, 259, typemax(T) - 1, typemax(T)]
+        # Use Float32-exact inputs around each tie so the reference does not
+        # double-round on targets that convert integers directly to bfloat.
+        for shift in (0, 16, 32, 54)
+            midpoint = T(257) << shift
+            step = T(1) << max(0, shift - 15) # Float32 spacing at the midpoint
+            append!(values, (midpoint - step, midpoint, midpoint + step))
+        end
+        if T === Int64
+            append!(values, -values)
+            append!(values, (typemin(T), typemin(T) + 1))
+        end
+        for x in values
+            @test BFloat16(x) === BFloat16(Float32(x))
+        end
+    end
+    @test reinterpret(UInt16, BFloat16(typemin(Int64))) == 0xdf00
+    @test reinterpret(UInt16, BFloat16(typemax(Int64))) == 0x5f00
+    @test reinterpret(UInt16, BFloat16(typemax(UInt64))) == 0x5f80
+    @test signbit(BFloat16(Int64(-1)))
+    @test !signbit(BFloat16(Int64(0)))
 end
 
 @testset "trunc" begin
@@ -74,6 +98,19 @@ end
     # InexactError
     @test_throws InexactError trunc(Int16, typemax(BFloat16))
     @test_throws InexactError trunc(UInt16, typemax(BFloat16))
+end
+
+@testset "control flow" begin
+    # On i686, the 64-bit atomic expands to a loop. Native bfloat values carried
+    # across its basic blocks can lose their sign, even without coverage.
+    Base.@noinline function sign_after_atomic(x::BFloat16, counter::Threads.Atomic{Int64})
+        Threads.atomic_add!(counter, Int64(1))
+        return signbit(x)
+    end
+    counter = Threads.Atomic{Int64}(0)
+    for bits in UInt16[0x0000, 0x8000, 0x3f80, 0xbf80, 0x7f80, 0xff80, 0x7fc0, 0xffc0]
+        @test sign_after_atomic(reinterpret(BFloat16, bits), counter) == (bits >> 15 != 0)
+    end
 end
 
 @testset "abi" begin
@@ -221,6 +258,11 @@ end
     @test isinf(nextfloat(BFloat16s.InfB16))
 
     @test isnan(prevfloat(BFloat16s.NaNB16))
+
+    @test nextfloat(BFloat16(1.0), UInt(5)) == nextfloat(BFloat16(1.0), 5)
+    @test prevfloat(BFloat16(1.0), UInt(5)) == prevfloat(BFloat16(1.0), 5)
+    @test nextfloat(BFloat16(0.0), typemax(UInt64)) == Inf
+    @test prevfloat(BFloat16(0.0), typemax(UInt64)) == -Inf
 end
 
 @testset "Decompose BFloat16" begin
@@ -265,6 +307,22 @@ end
 
     # prevfloat(one(BFloat16)) should be maximum
     @test ma === prevfloat(one(BFloat16), 1)
+end
+
+@testset "i/o" begin
+    @test reinterpret(UInt16, BFloat16(1/3)) == 0x3eab
+    @test reinterpret(UInt16, bswap(BFloat16(1/3))) == 0xab3e
+
+    io = IOBuffer()
+
+    write(io, htol(BFloat16(3.14159)))
+    @test take!(io) == UInt8[0x49, 0x40]
+
+    write(io, hton(BFloat16(3.14159)))
+    @test take!(io) == UInt8[0x40, 0x49]
+
+    @test htol(read(IOBuffer(UInt8[0x49, 0x40]), BFloat16)) == BFloat16(3.14159)
+    @test hton(read(IOBuffer(UInt8[0x40, 0x49]), BFloat16)) == BFloat16(3.14159)
 end
 
 include("structure.jl")

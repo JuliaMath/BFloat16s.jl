@@ -16,9 +16,9 @@ for more information.
 
 This package is suitable to evaluate whether using BFloat16 would cause
 precision problems for any particular algorithm, even without access to supporting
-hardware. Note that this package is designed for functionality, not performance,
-so this package should be used for precision experiments only, not performance
-experiments.
+hardware.
+
+Native hardware support, implemented in this package, began with Julia 1.11 via `Core.BFloat16` with support for Intel processors (x86_64, i686) via LLVM 16. Support for 64-bit ARM processors (aarch64) is available with Julia 1.13 which uses LLVM 20. 
 
 ## Usage
 

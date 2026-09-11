@@ -23,12 +23,14 @@ import Printf
 # (and supports synthesizing constants) we can use the `bfloat` IR type, otherwise we fall
 # back to defining a primitive type that will be represented as an `i16`. If, in addition,
 # the target supports BFloat16 arithmetic, we can use LLVM instructions.
-# - x86: storage and arithmetic support in LLVM 15
+# - x86_64: storage and arithmetic support in LLVM 15
+# - i686: use software storage and arithmetic; native bfloat is miscompiled
+#   across basic blocks, and signed Int64 conversion can crash LLVM
 # - aarch64: storage support in LLVM 17
 const llvm_storage = if isdefined(Core, :BFloat16)
-    if Sys.ARCH in [:x86_64, :i686] && Base.libllvm_version >= v"15"
+    if Sys.ARCH == :x86_64 && Base.libllvm_version >= v"15"
         true
-    elseif Sys.ARCH == :aarch64 && Base.libllvm_version >= v"17"
+    elseif Sys.ARCH == :aarch64 && Base.libllvm_version >= v"19"
         true
     else
         false
@@ -36,9 +38,11 @@ const llvm_storage = if isdefined(Core, :BFloat16)
 else
     false
 end
-const llvm_arithmetic = if llvm_storage
+if llvm_storage
     import Core: BFloat16
-    if Sys.ARCH in [:x86_64, :i686] && Base.libllvm_version >= v"15"
+end
+const llvm_arithmetic = if llvm_storage
+    if Sys.ARCH == :x86_64 && Base.libllvm_version >= v"15"
         true
     elseif Sys.ARCH == :aarch64 && Base.libllvm_version >= v"19"
         true
@@ -389,7 +393,15 @@ randexp(rng::AbstractRNG, ::Type{BFloat16}) = convert(BFloat16, randexp(rng))
 bitstring(x::BFloat16) = bitstring(reinterpret(Unsigned, x))
 
 # next/prevfloat
-function Base.nextfloat(f::BFloat16, d::Integer)
+@static if isdefined(Base, :_nextfloat) # JuliaLang#59668
+    Base._nextfloat(f::BFloat16, dneg::Bool, da::Integer) = _nextbfloat(f, dneg, da)
+else
+    Base.nextfloat(f::BFloat16, d::Integer) = _nextbfloat(f, d < 0, uabs(d))
+    Base.prevfloat(f::BFloat16, d::Integer) = _nextbfloat(f, d > 0, uabs(d))
+end
+
+function _nextbfloat(f::BFloat16, dneg::Bool, da::Integer)
+    # da must be > 0
     F = typeof(f)
     fumax = reinterpret(Unsigned, F(Inf))
     U = typeof(fumax)
@@ -399,8 +411,6 @@ function Base.nextfloat(f::BFloat16, d::Integer)
     fneg = fi < 0
     fu = unsigned(fi & typemax(fi))
 
-    dneg = d < 0
-    da = uabs(d)
     if da > typemax(U)
         fneg = dneg
         fu = fumax
@@ -441,6 +451,10 @@ for F in (:abs, :abs2, :sqrt, :cbrt,
 end
 
 Base.fma(x::BFloat16, y::BFloat16, z::BFloat16) = ccall("llvm.fma.bf16", llvmcall, BFloat16, (BFloat16, BFloat16, BFloat16), x, y, z)
+# i/o
+Base.write(io::IO, num::BFloat16) = write(io, reinterpret(UInt16, num))
+Base.read(io::IO, ::Type{BFloat16})::BFloat16 = reinterpret(BFloat16, read(io, UInt16))
+Base.bswap(x::BFloat16) = Base.bswap_int(x)
 
 # irrationals
 BFloat16(x::AbstractIrrational) = BFloat16(Float32(x)::Float32)
