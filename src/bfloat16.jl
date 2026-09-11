@@ -456,8 +456,8 @@ else
     Base.fma(x::BFloat16, y::BFloat16, z::BFloat16) = BFloat16(fma(Float32(x), Float32(y), Float32(z)))
 end
 # i/o
-Base.write(io::IO, num::BFloat16) = write(io, reinterpret(UInt16, num))
-Base.read(io::IO, ::Type{BFloat16})::BFloat16 = reinterpret(BFloat16, read(io, UInt16))
+Base.write(io::IO, num::BFloat16) = write(io, htol(reinterpret(UInt16, num)))
+Base.read(io::IO, ::Type{BFloat16})::BFloat16 = reinterpret(BFloat16, ltoh(read(io, UInt16)))
 Base.bswap(x::BFloat16) = Base.bswap_int(x)
 
 # irrationals
