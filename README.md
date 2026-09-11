@@ -17,6 +17,7 @@ for more information.
 This package is suitable to evaluate whether using BFloat16 would cause
 precision problems for any particular algorithm, even without access to supporting
 hardware.
+It is not intended as a package for performance benchmarking.
 
 Native support in this package uses `Core.BFloat16` when LLVM target support is available: x86_64 with LLVM 15+, and aarch64 with LLVM 19+. i686 currently uses software storage and arithmetic due to LLVM miscompilations.
 
