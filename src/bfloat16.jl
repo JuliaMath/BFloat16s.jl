@@ -5,7 +5,7 @@ import Base: isfinite, isnan, precision, iszero, eps,
     exponent_one, exponent_half, leading_zeros,
     signbit, exponent, significand, frexp, ldexp,
     round, Int16, Int32, Int64,
-    +, -, *, /, ^, ==, <, <=, inv,
+    +, -, *, /, ^, fma, ==, <, <=, inv,
     abs, abs2, uabs, sqrt, cbrt,
     exp, exp2, exp10, expm1,
     log, log2, log10, log1p,
@@ -26,7 +26,7 @@ import Printf
 # - x86_64: storage and arithmetic support in LLVM 15
 # - i686: use software storage and arithmetic; native bfloat is miscompiled
 #   across basic blocks, and signed Int64 conversion can crash LLVM
-# - aarch64: storage support in LLVM 17
+# - aarch64: storage and arithmetic support in LLVM 19
 const llvm_storage = if isdefined(Core, :BFloat16)
     if Sys.ARCH == :x86_64 && Base.libllvm_version >= v"15"
         true
@@ -450,6 +450,11 @@ for F in (:abs, :abs2, :sqrt, :cbrt,
   end
 end
 
+if llvm_arithmetic
+    Base.fma(x::BFloat16, y::BFloat16, z::BFloat16) = ccall("llvm.fma.bf16", llvmcall, BFloat16, (BFloat16, BFloat16, BFloat16), x, y, z)
+else
+    Base.fma(x::BFloat16, y::BFloat16, z::BFloat16) = BFloat16(fma(Float32(x), Float32(y), Float32(z)))
+end
 # i/o
 Base.write(io::IO, num::BFloat16) = write(io, reinterpret(UInt16, num))
 Base.read(io::IO, ::Type{BFloat16})::BFloat16 = reinterpret(BFloat16, read(io, UInt16))

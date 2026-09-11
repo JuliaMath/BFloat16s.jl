@@ -13,6 +13,8 @@ for F in  (:abs, :abs2, :sqrt, :cbrt,
     end
 end
 
+@test fma(phi, invphi, invphi) == BFloat16(fma(Float32(phi), Float32(invphi), Float32(invphi)))
+
 for F in (:asec, :acsc, :cosh, :acosh, :acoth)
     @eval begin
         @test $F(phi) == BFloat16($F(Float32(phi)))
