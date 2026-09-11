@@ -59,16 +59,17 @@ end
     # Int is only 32 bits on i686; exercise the 64-bit conversions explicitly.
     for T in (Int64, UInt64)
         values = T[0, 1, 255, 256, 257, 258, 259, typemax(T) - 1, typemax(T)]
-        # Exactly representable values and both sides of rounding ties.
+        # Use Float32-exact inputs around each tie so the reference does not
+        # double-round on targets that convert integers directly to bfloat.
         for shift in (0, 16, 32, 54)
             midpoint = T(257) << shift
-            append!(values, (midpoint - 1, midpoint, midpoint + 1))
+            step = T(1) << max(0, shift - 15) # Float32 spacing at the midpoint
+            append!(values, (midpoint - step, midpoint, midpoint + step))
         end
         if T === Int64
             append!(values, -values)
             append!(values, (typemin(T), typemin(T) + 1))
         end
-        # Preserve the existing rounding through Float32.
         for x in values
             @test BFloat16(x) === BFloat16(Float32(x))
         end
