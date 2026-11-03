@@ -81,6 +81,78 @@ end
     @test !signbit(BFloat16(Int64(0)))
 end
 
+@testset "correct rounding" begin
+    # every finite, non-negative BFloat16, as a Float64
+    finite = [Float64(reinterpret(Float32, UInt32(u) << 16)) for u in 0x0000:0x7f7f]
+    # round to the nearest BFloat16, ties to even, by comparing against the midpoints
+    # between consecutive BFloat16s, which Float64 represents exactly
+    function reference(x::Real)
+        isnan(x) && return BFloat16s.NaNB16
+        a = x isa Integer ? abs(widen(x)) : abs(x)
+        i = searchsortedlast(finite, a; lt=<)
+        u = UInt16(i - 1)
+        if i == length(finite)
+            # overflow, at the midpoint between floatmax and the next power of two
+            a >= finite[end] + 2.0^119 && (u = 0x7f80)
+        else
+            mid = (finite[i] + finite[i+1]) / 2
+            (a > mid || (a == mid && isodd(u))) && (u += 0x0001)
+        end
+        return reinterpret(BFloat16, signbit(x) ? u | 0x8000 : u)
+    end
+    # the conversions, on the host's code path and on the software one. The sign of a NaN
+    # result is unspecified: native conversions keep it on AArch64 but not on x86.
+    same(y, r) = isnan(r) ? isnan(y) : y === r
+    check(x) = same(BFloat16(x), reference(x)) &&
+               (x isa Integer ? BFloat16s.bfloat16_from_integer(x) :
+                x isa Float64 ? BFloat16s.bfloat16_from_float64(x) :
+                BFloat16(x)) === reference(x)
+
+    # values on both sides of a midpoint, closer than Float32 can resolve
+    rng = MersenneTwister(0)
+    mids = [(finite[i] + finite[i+1]) / 2 for i in rand(rng, 1:length(finite)-1, 1000)]
+    floats = [mids; prevfloat.(mids); nextfloat.(mids); randn(rng, 1000)]
+    append!(floats, [0.0, nextfloat(0.0), floatmin(Float64), 2.0^-134, 2.0^-133, 2.0^-126,
+                     prevfloat(2.0^-126), Inf, NaN, floatmax(Float64),
+                     finite[end], finite[end] + 2.0^119, prevfloat(finite[end] + 2.0^119)])
+    append!(floats, -floats)
+    @test all(check, floats)
+    @test BFloat16(1 + 2.0^-8 + 2.0^-30) == BFloat16(1.0078125)
+    @test BFloat16(-(1 + 2.0^-8 + 2.0^-30)) == BFloat16(-1.0078125)
+    @test signbit(BFloat16(-0.0)) && signbit(BFloat16(-nextfloat(0.0)))
+    @test isnan(BFloat16(-NaN))
+
+    for T in (Int32, UInt32, Int64, UInt64, Int128, UInt128)
+        # just above a midpoint, beyond Float32's 24 bits of precision
+        ints = T[(T(257) << k) + one(T) for k in 16:(8sizeof(T) - 10)]
+        append!(ints, rand(rng, T, 1000))
+        append!(ints, [typemax(T), typemax(T) - one(T), typemin(T)])
+        T <: Signed && append!(ints, -ints[1:end-1])
+        @test all(check, ints)
+    end
+    @test BFloat16(Int64(2)^24 + Int64(2)^16 + 1) == BFloat16(16908288)
+    @test BFloat16(typemax(UInt128)) == BFloat16s.InfB16
+    @test BFloat16(big(2)^24 + big(2)^16 + 1) == BFloat16(16908288)
+    @test BFloat16(big(2)^200) == BFloat16s.InfB16
+    @test BFloat16(-big(2)^200) == -BFloat16s.InfB16
+    @test BFloat16(true) == one(BFloat16) && BFloat16(false) == zero(BFloat16)
+
+    setprecision(BigFloat, 200) do
+        bigs = [big(1) + big(2.0)^-8 + big(2.0)^-60, big(2.0)^-140 * (1 + big(2.0)^-100),
+                big(2.0)^-135 + big(2.0)^-190, big(floatmax(Float64)) * 4,
+                big(2.0)^-2000, big(0.0)]
+        append!(bigs, -bigs)
+        @test all(x -> BFloat16(x) === reference(x), bigs)
+    end
+    setprecision(BigFloat, 12) do
+        bigs = [big(1) + big(2.0)^-8 + big(2.0)^-11, big(1) + big(2.0)^-8]
+        @test all(x -> BFloat16(x) === reference(x), bigs)
+    end
+    @test BFloat16(big"1.0039062500000000000001") == BFloat16(1.0078125)
+    @test isnan(BFloat16(big(NaN)))
+    @test BFloat16(big(Inf)) == BFloat16s.InfB16
+end
+
 @testset "trunc" begin
     f_val = 5 .+ rand(100)
     bf_val = BFloat16.(f_val)

@@ -164,9 +164,55 @@ Base.trunc(::Type{BFloat16}, x::Float32) = reinterpret(BFloat16,
         (reinterpret(UInt32, x) >> 16) % UInt16
     )
 
+# Round `n / 2^s` to the nearest integer, ties to even, for an unsigned `n` and `s > 0`.
+@inline function rne_shift(n::Integer, s::Integer)
+    q = n >> s
+    r = n - (q << s)
+    h = one(n) << (s - 1)
+    return q + ((r > h) | ((r == h) & isodd(q)))
+end
+
+# Conversions from Float64 and integers, rounding only once. Going through Float32 would
+# round twice, e.g. 1 + 2^-8 + 2^-30 would become 1 + 2^-8 and then round down to 1.
+function bfloat16_from_float64(x::Float64)
+    isnan(x) && return NaNB16
+    u = reinterpret(UInt64, x)
+    sign = ((u >> 48) % UInt16) & sign_mask(BFloat16)
+    a = u & ~sign_mask(Float64)
+    h = if a >= 0x47f0_0000_0000_0000       # 2^128 and up, including Inf
+        exponent_mask(BFloat16)
+    elseif a >= 0x3810_0000_0000_0000   # floatmin(BFloat16) and up
+        # rebias the exponent from 1023 to 127 and drop 45 significand bits; a carry out of
+        # the significand increments the exponent, up to Inf
+        rne_shift(a - 0x3800_0000_0000_0000, 45) % UInt16
+    else
+        # subnormal: count multiples of nextfloat(BFloat16(0)) = 2^-133
+        e = (a >> 52) % Int
+        s = 942 - e
+        m = (a & significand_mask(Float64)) | 0x0010_0000_0000_0000
+        (e == 0 || s > 53) ? 0x0000 : rne_shift(m, s) % UInt16
+    end
+    return reinterpret(BFloat16, h | sign)
+end
+
+function bfloat16_from_integer(x::Integer)
+    n = uabs(x)
+    bits = ndigits(n; base=2)
+    # (Float32 represents these exactly)
+    bits <= 24 && return BFloat16(Float32(x))
+    h = if bits > 128
+        exponent_mask(BFloat16)
+    else
+        # 8 significant bits (a 9th when rounding up to the next power of two, which
+        # increments the exponent, up to Inf)
+        q = rne_shift(n, bits - 8) % UInt16
+        (UInt16(bits + 126) << 7) + q - 0x0080
+    end
+    return reinterpret(BFloat16, x < 0 ? h | sign_mask(BFloat16) : h)
+end
+
 if llvm_arithmetic
     BFloat16(x::Float32) = Base.fptrunc(BFloat16, x)
-    BFloat16(x::Float64) = Base.fptrunc(BFloat16, x)
 
     # XXX: can LLVM do this natively?
     BFloat16(x::Float16) = BFloat16(Float32(x))
@@ -181,19 +227,15 @@ else
         return reinterpret(BFloat16, (h >> 16) % UInt16)
     end
 
-    # Conversion from Float64
-    function BFloat16(x::Float64)
-        BFloat16(Float32(x))
-    end
-
     # Conversion from Float16
     function BFloat16(x::Float16)
         BFloat16(Float32(x))
     end
 end
 
-# Conversion from Integer
-if llvm_arithmetic
+# Before LLVM 20, x86 converts Float64 and integers to bfloat through float, rounding twice.
+if llvm_arithmetic && Base.libllvm_version >= v"20"
+    BFloat16(x::Float64) = Base.fptrunc(BFloat16, x)
     for st in (Int8, Int16, Int32, Int64)
         @eval begin
             BFloat16(x::($st)) = Base.sitofp(BFloat16, x)
@@ -205,11 +247,9 @@ if llvm_arithmetic
         end
     end
 else
-    BFloat16(x::Integer) = convert(BFloat16, convert(Float32, x)::Float32)
+    BFloat16(x::Float64) = bfloat16_from_float64(x)
 end
-# TODO: optimize
-BFloat16(x::UInt128) = convert(BFloat16, Float64(x))
-BFloat16(x::Int128)  = convert(BFloat16, Float64(x))
+BFloat16(x::Integer) = bfloat16_from_integer(x)::BFloat16
 
 # Conversion to Float16
 function Base.Float16(x::BFloat16)
@@ -232,7 +272,16 @@ else
 end
 
 # BigFloat conversion
-BFloat16(x::BigFloat) = BFloat16(Float32(x))
+function BFloat16(x::BigFloat)
+    # round to odd: truncate, and set the last bit if that was inexact. Float64 has more
+    # than two bits of precision beyond BFloat16, so rounding the result to BFloat16 then
+    # gives the same as rounding `x` itself.
+    y = Float64(x, RoundToZero)
+    if !isnan(x) && y != x
+        y = reinterpret(Float64, reinterpret(UInt64, y) | 0x1)
+    end
+    return BFloat16(y)
+end
 Base.BigFloat(x::BFloat16) = BigFloat(Float32(x))
 
 # Basic arithmetic
