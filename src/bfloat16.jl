@@ -195,9 +195,14 @@ function bfloat16_from_float64(x::Float64)
     return reinterpret(BFloat16, h | sign)
 end
 
+# Number of significant bits. `ndigits(n; base=2)` isn't specialized on the base, so it would
+# leave the base-10 lookup into a global array in the code, which GPU compilers reject.
+bit_length(n::Base.BitInteger) = 8sizeof(n) - leading_zeros(n)
+bit_length(n::Integer) = ndigits(n; base=2)
+
 function bfloat16_from_integer(x::Integer)
     n = uabs(x)
-    bits = ndigits(n; base=2)
+    bits = bit_length(n)
     # (Float32 represents these exactly)
     bits <= 24 && return BFloat16(Float32(x))
     h = if bits > 128
